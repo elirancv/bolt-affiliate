@@ -16,20 +16,26 @@ import ProductView from './pages/stores/ProductView';
 import ProductList from './pages/products/ProductList';
 import AddProduct from './pages/products/AddProduct';
 import EditProduct from './pages/products/EditProduct';
-import Analytics from './pages/Analytics';
-import Pages from './pages/Pages';
 
 export default function App() {
-  const { setUser, refreshSession } = useAuthStore();
+  const { setUser } = useAuthStore();
 
   useEffect(() => {
-    // Initial session check
-    refreshSession();
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email!,
+          subscription_tier: 'free',
+        });
+      }
+    });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -42,7 +48,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [setUser, refreshSession]);
+  }, [setUser]);
 
   return (
     <Router>
@@ -58,21 +64,14 @@ export default function App() {
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-            {/* Main Routes */}
             <Route path="/" element={<Dashboard />} />
             <Route path="/stores" element={<StoreList />} />
             <Route path="/stores/create" element={<CreateStore />} />
+            <Route path="/stores/:storeId/settings" element={<StoreSettings />} />
             <Route path="/products" element={<ProductList />} />
-            
-            {/* Store-specific Routes */}
-            <Route path="/stores/:storeId">
-              <Route path="products" element={<ProductList />} />
-              <Route path="products/add" element={<AddProduct />} />
-              <Route path="products/:productId/edit" element={<EditProduct />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="pages" element={<Pages />} />
-              <Route path="settings" element={<StoreSettings />} />
-            </Route>
+            <Route path="/stores/:storeId/products" element={<ProductList />} />
+            <Route path="/stores/:storeId/products/add" element={<AddProduct />} />
+            <Route path="/stores/:storeId/products/:productId/edit" element={<EditProduct />} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />

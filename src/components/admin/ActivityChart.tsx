@@ -24,18 +24,18 @@ ChartJS.register(
 );
 
 interface ActivityChartProps {
-  activityByDate?: Record<string, {
+  activityByDate: Record<string, {
     pageViews: number;
     visitors: number;
     clicks: number;
   }>;
 }
 
-export default function ActivityChart({ activityByDate = {} }: ActivityChartProps) {
+export default function ActivityChart({ activityByDate }: ActivityChartProps) {
   const dates = Object.keys(activityByDate).sort();
-  const pageViews = dates.map(date => activityByDate[date]?.pageViews || 0);
-  const visitors = dates.map(date => activityByDate[date]?.visitors || 0);
-  const clicks = dates.map(date => activityByDate[date]?.clicks || 0);
+  const pageViews = dates.map(date => activityByDate[date].pageViews);
+  const visitors = dates.map(date => activityByDate[date].visitors);
+  const clicks = dates.map(date => activityByDate[date].clicks);
 
   const data = {
     labels: dates,
@@ -80,17 +80,6 @@ export default function ActivityChart({ activityByDate = {} }: ActivityChartProp
       }
     }
   };
-
-  if (dates.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Platform Activity</h3>
-        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">No activity data available</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
