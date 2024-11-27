@@ -52,8 +52,8 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         
         {/* Store Preview Routes */}
-        <Route path="/stores/:storeId" element={<StoreView />} />
-        <Route path="/stores/:storeId/products/:productId" element={<ProductView />} />
+        <Route path="/preview/:storeId" element={<StoreView />} />
+        <Route path="/preview/:storeId/products/:productId" element={<ProductView />} />
         
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>

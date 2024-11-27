@@ -74,7 +74,7 @@ function ProductCard({ product, storeId, onSave, isSaved }: ProductCardProps) {
   };
 
   const navigateToProduct = () => {
-    navigate(`/stores/${storeId}/products/${product.id}`);
+    navigate(`/preview/${storeId}/products/${product.id}`);
   };
 
   const handleBuyNowClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {

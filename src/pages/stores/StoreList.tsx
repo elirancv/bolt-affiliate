@@ -34,7 +34,7 @@ export default function StoreList() {
       console.error('Netlify URL not configured');
       return;
     }
-    window.open(`${netlifyUrl}/stores/${storeId}`, '_blank');
+    window.open(`${netlifyUrl}/preview/${storeId}`, '_blank');
   };
 
   if (loading) {
