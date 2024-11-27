@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useParams } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Store, 
@@ -7,22 +7,38 @@ import {
   FileText, 
   Settings,
   BarChart,
-  Shield
+  Shield,
+  ArrowLeft
 } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 
 export default function Sidebar() {
   const { isAdmin } = useAdmin();
+  const location = useLocation();
+  const { storeId } = useParams();
 
-  const navigation = [
-    ...(isAdmin ? [{ name: 'Admin', href: '/admin', icon: Shield }] : []),
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Stores', href: '/stores', icon: Store },
-    { name: 'Products', href: '/products', icon: ShoppingBag },
-    { name: 'Pages', href: '/pages', icon: FileText },
-    { name: 'Analytics', href: '/analytics', icon: BarChart },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ];
+  const getNavigation = () => {
+    if (storeId) {
+      // Store-specific navigation
+      return [
+        { name: 'Back to Stores', href: '/stores', icon: ArrowLeft },
+        { name: 'Products', href: `/stores/${storeId}/products`, icon: ShoppingBag },
+        { name: 'Analytics', href: `/stores/${storeId}/analytics`, icon: BarChart },
+        { name: 'Pages', href: `/stores/${storeId}/pages`, icon: FileText },
+        { name: 'Settings', href: `/stores/${storeId}/settings`, icon: Settings },
+      ];
+    }
+
+    // Main navigation
+    return [
+      ...(isAdmin ? [{ name: 'Admin', href: '/admin', icon: Shield }] : []),
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { name: 'Stores', href: '/stores', icon: Store },
+      { name: 'Products', href: '/products', icon: ShoppingBag },
+    ];
+  };
+
+  const navigation = getNavigation();
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen">

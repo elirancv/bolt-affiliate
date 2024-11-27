@@ -7,6 +7,7 @@ interface AuthState {
   loading: boolean;
   setUser: (user: User | null) => void;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -22,4 +23,24 @@ export const useAuthStore = create<AuthState>((set) => ({
       throw error;
     }
   },
+  refreshSession: async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        set({
+          user: {
+            id: session.user.id,
+            email: session.user.email!,
+            subscription_tier: 'free'
+          },
+          loading: false
+        });
+      } else {
+        set({ user: null, loading: false });
+      }
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+      set({ user: null, loading: false });
+    }
+  }
 }));

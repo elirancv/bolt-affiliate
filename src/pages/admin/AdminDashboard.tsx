@@ -10,9 +10,40 @@ import StorePerformance from '../../components/admin/StorePerformance';
 import LoadingState from '../../components/admin/LoadingState';
 import ErrorState from '../../components/admin/ErrorState';
 
+interface AdminStats {
+  totalUsers: number;
+  usersByTier: Record<string, number>;
+  totalStores: number;
+  totalProducts: number;
+  totalPageViews: number;
+  totalVisitors: number;
+  totalClicks: number;
+  averageStoresPerUser: number;
+  averageProductsPerStore: number;
+  users: Array<{
+    id: string;
+    email: string;
+    created_at: string;
+    subscription_tier: string;
+    is_admin: boolean;
+  }>;
+  activityByDate?: Record<string, {
+    pageViews: number;
+    visitors: number;
+    clicks: number;
+  }>;
+  storePerformance?: Array<{
+    id: string;
+    name: string;
+    productsCount: number;
+    totalClicks: number;
+    createdAt: string;
+  }>;
+}
+
 export default function AdminDashboard() {
   const { isAdmin: isAdminUser, loading: adminCheckLoading, error: adminError } = useAdmin();
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,6 +76,10 @@ export default function AdminDashboard() {
 
   if (error) {
     return <ErrorState message={`Error loading admin stats: ${error}`} />;
+  }
+
+  if (!stats) {
+    return <ErrorState message="No stats data available" />;
   }
 
   return (

@@ -9,6 +9,9 @@ interface AdminStatsProps {
     totalProducts: number;
     averageStoresPerUser: number;
     averageProductsPerStore: number;
+    totalPageViews: number;
+    totalVisitors: number;
+    totalClicks: number;
   };
 }
 
@@ -33,8 +36,8 @@ export default function AdminStats({ stats }: AdminStatsProps) {
       color: 'bg-purple-500'
     },
     {
-      title: 'Avg Products/Store',
-      value: stats.averageProductsPerStore.toFixed(1),
+      title: 'Total Clicks',
+      value: stats.totalClicks,
       icon: TrendingUp,
       color: 'bg-orange-500'
     }

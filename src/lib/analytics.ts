@@ -1,47 +1,19 @@
 import { supabase } from './supabase';
+import { format } from 'date-fns';
 
 export async function trackProductClick(storeId: string, productId: string) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = format(new Date(), 'yyyy-MM-dd');
 
   try {
-    // First, try to update existing record for today
-    const { data, error: selectError } = await supabase
-      .from('analytics')
-      .select('*')
-      .eq('store_id', storeId)
-      .eq('date', today)
-      .single();
+    const { error } = await supabase.rpc(
+      'increment_product_clicks',
+      { 
+        p_store_id: storeId,
+        p_date: today
+      }
+    );
 
-    if (selectError && selectError.code !== 'PGRST116') {
-      throw selectError;
-    }
-
-    if (data) {
-      // Update existing record
-      const { error: updateError } = await supabase
-        .from('analytics')
-        .update({ 
-          product_clicks: data.product_clicks + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', data.id);
-
-      if (updateError) throw updateError;
-    } else {
-      // Create new record
-      const { error: insertError } = await supabase
-        .from('analytics')
-        .insert([{
-          store_id: storeId,
-          date: today,
-          product_clicks: 1,
-          page_views: 0,
-          unique_visitors: 0
-        }]);
-
-      if (insertError) throw insertError;
-    }
-
+    if (error) throw error;
     return true;
   } catch (error) {
     console.error('Error tracking product click:', error);
@@ -50,48 +22,67 @@ export async function trackProductClick(storeId: string, productId: string) {
 }
 
 export async function trackPageView(storeId: string) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = format(new Date(), 'yyyy-MM-dd');
 
   try {
-    const { data, error: selectError } = await supabase
-      .from('analytics')
-      .select('*')
-      .eq('store_id', storeId)
-      .eq('date', today)
-      .single();
+    const { error } = await supabase.rpc(
+      'increment_page_view',
+      { 
+        p_store_id: storeId,
+        p_date: today
+      }
+    );
 
-    if (selectError && selectError.code !== 'PGRST116') {
-      throw selectError;
-    }
-
-    if (data) {
-      const { error: updateError } = await supabase
-        .from('analytics')
-        .update({ 
-          page_views: data.page_views + 1,
-          unique_visitors: data.unique_visitors + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', data.id);
-
-      if (updateError) throw updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from('analytics')
-        .insert([{
-          store_id: storeId,
-          date: today,
-          page_views: 1,
-          unique_visitors: 1,
-          product_clicks: 0
-        }]);
-
-      if (insertError) throw insertError;
-    }
-
+    if (error) throw error;
     return true;
   } catch (error) {
     console.error('Error tracking page view:', error);
+    throw error;
+  }
+}
+
+export async function getStoreAnalytics(storeId: string, days: number = 30) {
+  try {
+    const { data, error } = await supabase
+      .from('analytics')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('date', { ascending: false })
+      .limit(days);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching analytics:', error);
+    throw error;
+  }
+}
+
+export async function getTopProducts(storeId: string) {
+  try {
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('store_id', storeId);
+
+    if (productsError) throw productsError;
+
+    const { data: analytics, error: analyticsError } = await supabase
+      .from('analytics')
+      .select('product_clicks')
+      .eq('store_id', storeId);
+
+    if (analyticsError) throw analyticsError;
+
+    const totalClicks = analytics?.reduce((sum, record) => 
+      sum + (record.product_clicks || 0), 0) || 0;
+
+    return (products || []).map(product => ({
+      ...product,
+      clicks: totalClicks
+    }));
+  } catch (error) {
+    console.error('Error fetching top products:', error);
     throw error;
   }
 }

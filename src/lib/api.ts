@@ -3,9 +3,17 @@ import type { Store, Product } from '../types';
 
 export async function createStore(store: Omit<Store, 'id' | 'created_at'>) {
   try {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session?.user) {
+      throw new Error('User not authenticated');
+    }
+
     const { data, error } = await supabase
       .from('stores')
-      .insert([store])
+      .insert([{
+        ...store,
+        user_id: session.session.user.id
+      }])
       .select()
       .single();
 
