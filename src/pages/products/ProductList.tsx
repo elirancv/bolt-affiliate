@@ -143,7 +143,7 @@ export default function ProductList() {
             {products.map((product) => (
               <div key={product.id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-all duration-200">
                 <Link 
-                  to={`/preview/${storeId}/products/${product.id}`}
+                  to={`/stores/${storeId}/products/${product.id}`}
                   className="block"
                 >
                   <div className="aspect-w-1 aspect-h-1 relative">
@@ -209,7 +209,7 @@ export default function ProductList() {
               <div key={product.id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-all duration-200">
                 <div className="p-4 flex items-center space-x-4">
                   <Link 
-                    to={`/preview/${storeId}/products/${product.id}`}
+                    to={`/stores/${storeId}/products/${product.id}`}
                     className="w-24 h-24 flex-shrink-0"
                   >
                     {product.image_urls && product.image_urls.length > 0 ? (
@@ -225,7 +225,7 @@ export default function ProductList() {
                     )}
                   </Link>
                   <Link 
-                    to={`/preview/${storeId}/products/${product.id}`}
+                    to={`/stores/${storeId}/products/${product.id}`}
                     className="flex-1 min-w-0"
                   >
                     <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors">
