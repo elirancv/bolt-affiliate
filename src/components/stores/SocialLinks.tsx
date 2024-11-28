@@ -54,9 +54,12 @@ export default function SocialLinks({ links, className = '' }: SocialLinksProps)
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className={`text-gray-400 hover:text-[${color}] transition-colors`}
+            className="text-gray-400 transition-colors social-link"
             aria-label={label}
             title={label}
+            style={{ 
+              '--social-hover-color': color
+            } as React.CSSProperties}
           >
             <Icon className="h-6 w-6" />
           </a>
@@ -65,3 +68,11 @@ export default function SocialLinks({ links, className = '' }: SocialLinksProps)
     </div>
   );
 }
+
+const style = document.createElement('style');
+style.textContent = `
+  .social-link:hover {
+    color: var(--social-hover-color) !important;
+  }
+`;
+document.head.appendChild(style);

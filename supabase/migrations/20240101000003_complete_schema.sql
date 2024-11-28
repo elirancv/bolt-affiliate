@@ -8,6 +8,9 @@ DROP FUNCTION IF EXISTS create_default_categories();
 DROP FUNCTION IF EXISTS insert_default_categories(UUID);
 DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP FUNCTION IF EXISTS refresh_store_metrics();
+DROP FUNCTION IF EXISTS increment_page_view(UUID, DATE);
+DROP FUNCTION IF EXISTS increment_product_clicks(UUID, DATE);
+DROP TABLE IF EXISTS analytics CASCADE;
 DROP TABLE IF EXISTS commissions CASCADE;
 DROP TABLE IF EXISTS clicks CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
@@ -56,6 +59,14 @@ CREATE TABLE stores (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add promotion settings to stores table
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS promotion_settings jsonb DEFAULT jsonb_build_object(
+  'show_free_shipping_banner', false,
+  'free_shipping_threshold', 50.00,
+  'banner_text', '🎉 Free shipping on orders over $50',
+  'banner_enabled', false
+);
+
 -- Categories table
 CREATE TABLE categories (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -67,7 +78,7 @@ CREATE TABLE categories (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Products table
+-- Products table with image_urls array
 CREATE TABLE products (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     store_id UUID REFERENCES stores(id) ON DELETE CASCADE,
@@ -78,7 +89,7 @@ CREATE TABLE products (
     sale_price DECIMAL(10,2),
     product_url TEXT NOT NULL,
     affiliate_url TEXT,
-    image_url TEXT,
+    image_urls TEXT[] NOT NULL DEFAULT '{}',
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'out_of_stock')),
     metadata JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -95,6 +106,18 @@ CREATE TABLE store_settings (
     notification_settings JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Analytics table
+CREATE TABLE analytics (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    store_id UUID REFERENCES stores(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    page_views INTEGER DEFAULT 0,
+    product_clicks INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(store_id, date)
 );
 
 -- Clicks/Analytics table
@@ -132,6 +155,73 @@ CREATE TRIGGER update_categories_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Function to increment page views
+CREATE OR REPLACE FUNCTION increment_page_view(p_store_id UUID, p_date DATE)
+RETURNS void AS $$
+BEGIN
+    INSERT INTO analytics (store_id, date, page_views)
+    VALUES (p_store_id, p_date, 1)
+    ON CONFLICT (store_id, date)
+    DO UPDATE SET 
+        page_views = analytics.page_views + 1,
+        updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Function to increment product clicks
+CREATE OR REPLACE FUNCTION increment_product_clicks(p_store_id UUID, p_date DATE)
+RETURNS void AS $$
+BEGIN
+    INSERT INTO analytics (store_id, date, product_clicks)
+    VALUES (p_store_id, p_date, 1)
+    ON CONFLICT (store_id, date)
+    DO UPDATE SET 
+        product_clicks = analytics.product_clicks + 1,
+        updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Function to insert default categories
+CREATE OR REPLACE FUNCTION insert_default_categories(store_uuid UUID)
+RETURNS void AS $$
+DECLARE
+    default_categories TEXT[] := ARRAY[
+        'Electronics',
+        'Fashion',
+        'Home & Garden',
+        'Books',
+        'Sports & Outdoors',
+        'Beauty & Health',
+        'Toys & Games',
+        'Automotive',
+        'Pet Supplies',
+        'Office Supplies'
+    ];
+    category TEXT;
+BEGIN
+    FOREACH category IN ARRAY default_categories
+    LOOP
+        INSERT INTO categories (store_id, name, description)
+        VALUES (store_uuid, category, category || ' products');
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function to create default categories
+CREATE OR REPLACE FUNCTION create_default_categories()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM insert_default_categories(NEW.id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for new stores
+CREATE TRIGGER store_created_trigger
+    AFTER INSERT ON stores
+    FOR EACH ROW
+    EXECUTE FUNCTION create_default_categories();
+
 -- Enable RLS on all tables
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
@@ -139,6 +229,7 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE store_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clicks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payout_info ENABLE ROW LEVEL SECURITY;
+ALTER TABLE analytics ENABLE ROW LEVEL SECURITY;
 
 -- Store policies
 CREATE POLICY "Stores are viewable by owner" ON stores
@@ -184,12 +275,8 @@ CREATE POLICY "Categories are deletable by store owner" ON categories
     );
 
 -- Product policies
-CREATE POLICY "Products are viewable by store owner" ON products
-    FOR SELECT USING (
-        auth.uid() IN (
-            SELECT user_id FROM stores WHERE id = store_id
-        )
-    );
+CREATE POLICY "Products are viewable by anyone" ON products
+    FOR SELECT USING (true);
 
 CREATE POLICY "Products are insertable by store owner" ON products
     FOR INSERT WITH CHECK (
@@ -212,46 +299,19 @@ CREATE POLICY "Products are deletable by store owner" ON products
         )
     );
 
--- Function to insert default categories
-CREATE OR REPLACE FUNCTION insert_default_categories(store_uuid UUID)
-RETURNS void AS $$
-DECLARE
-    default_categories TEXT[] := ARRAY[
-        'Electronics',
-        'Fashion',
-        'Home & Garden',
-        'Books',
-        'Sports & Outdoors',
-        'Beauty & Health',
-        'Toys & Games',
-        'Automotive',
-        'Pet Supplies',
-        'Office Supplies'
-    ];
-    category TEXT;
-BEGIN
-    FOREACH category IN ARRAY default_categories
-    LOOP
-        INSERT INTO categories (store_id, name, description)
-        VALUES (store_uuid, category, category || ' products');
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
+-- Analytics policies
+CREATE POLICY "Analytics are viewable by store owner" ON analytics
+    FOR SELECT USING (
+        auth.uid() IN (
+            SELECT user_id FROM stores WHERE id = store_id
+        )
+    );
 
--- Trigger function to create default categories
-CREATE OR REPLACE FUNCTION create_default_categories()
-RETURNS TRIGGER AS $$
-BEGIN
-    PERFORM insert_default_categories(NEW.id);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+CREATE POLICY "Analytics are insertable by anyone" ON analytics
+    FOR INSERT WITH CHECK (true);
 
--- Create trigger for new stores
-CREATE TRIGGER store_created_trigger
-    AFTER INSERT ON stores
-    FOR EACH ROW
-    EXECUTE FUNCTION create_default_categories();
+CREATE POLICY "Analytics are updatable by anyone" ON analytics
+    FOR UPDATE USING (true);
 
 -- Create view for store metrics
 CREATE OR REPLACE VIEW store_metrics AS

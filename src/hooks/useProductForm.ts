@@ -1,24 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Product } from '../types';
 import { useImageUpload } from './useImageUpload';
 
 interface ValidationErrors {
-  title?: string;
+  name?: string;
   price?: string;
-  affiliateUrl?: string;
-  imageUrl?: string;
-  imageFile?: string;
-  category?: string;
+  affiliate_url?: string;
+  image_url?: string;
+  category_id?: string;
 }
 
 export function useProductForm(initialData?: Product) {
-  const [title, setTitle] = useState(initialData?.title || '');
+  const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
-  const [price, setPrice] = useState(initialData?.price.toString() || '');
+  const [price, setPrice] = useState(initialData?.price?.toString() || '');
+  const [salePrice, setSalePrice] = useState(initialData?.sale_price?.toString() || '');
   const [affiliateUrl, setAffiliateUrl] = useState(initialData?.affiliate_url || '');
-  const [selectedCategory, setSelectedCategory] = useState(initialData?.category || 'Electronics');
-  const [customCategory, setCustomCategory] = useState('');
-  const [isUrlMode, setIsUrlMode] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState(initialData?.category_id || '');
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
   const {
@@ -33,56 +31,31 @@ export function useProductForm(initialData?: Product) {
     setImageUrls
   } = useImageUpload(initialData?.image_urls || ['']);
 
-  // Set initial custom category if it's not in predefined categories
-  useEffect(() => {
-    if (initialData?.category && !['Electronics', 'Fashion', 'Home & Garden', 'Books', 'Health & Beauty', 'Sports & Outdoors', 'Toys & Games', 'Automotive', 'Pet Supplies', 'Office Products', 'Food & Beverages', 'Art & Crafts', 'Baby & Kids', 'Tools & Home Improvement'].includes(initialData.category)) {
-      setSelectedCategory('Custom');
-      setCustomCategory(initialData.category);
-    }
-  }, [initialData]);
-
   const validateForm = () => {
     const errors: ValidationErrors = {};
 
-    if (!title.trim()) {
-      errors.title = 'Title is required';
+    if (!name.trim()) {
+      errors.name = 'Product name is required';
     }
 
     if (!price || isNaN(Number(price)) || Number(price) < 0) {
       errors.price = 'Please enter a valid price';
     }
 
-    if (!affiliateUrl) {
-      errors.affiliateUrl = 'Affiliate URL is required';
-    } else {
+    if (salePrice && (!isNaN(Number(salePrice)) && Number(salePrice) >= Number(price))) {
+      errors.price = 'Sale price must be lower than regular price';
+    }
+
+    if (affiliateUrl) {
       try {
         new URL(affiliateUrl);
       } catch {
-        errors.affiliateUrl = 'Please enter a valid URL';
+        errors.affiliate_url = 'Please enter a valid URL';
       }
     }
 
-    if (isUrlMode) {
-      const hasValidUrl = imageUrls.some(url => {
-        try {
-          new URL(url);
-          return true;
-        } catch {
-          return false;
-        }
-      });
-      if (!hasValidUrl) {
-        errors.imageUrl = 'Please enter at least one valid image URL';
-      }
-    } else {
-      const hasFile = imageFiles.some(file => file !== null);
-      if (!hasFile && !imageUrls.some(url => url.trim() !== '')) {
-        errors.imageFile = 'Please select at least one image file';
-      }
-    }
-
-    if (selectedCategory === 'Custom' && !customCategory.trim()) {
-      errors.category = 'Please enter a custom category';
+    if (!selectedCategory) {
+      errors.category_id = 'Please select a category';
     }
 
     setValidationErrors(errors);
@@ -91,23 +64,20 @@ export function useProductForm(initialData?: Product) {
 
   return {
     formData: {
-      title,
-      setTitle,
+      name,
+      setName,
       description,
       setDescription,
       price,
       setPrice,
+      salePrice,
+      setSalePrice,
       affiliateUrl,
       setAffiliateUrl,
       selectedCategory,
       setSelectedCategory,
-      customCategory,
-      setCustomCategory,
-      isUrlMode,
-      setIsUrlMode,
       imageUrls,
-      imageFiles,
-      imageUploadError
+      imageFiles
     },
     imageHandlers: {
       handleFileSelect,
@@ -118,7 +88,8 @@ export function useProductForm(initialData?: Product) {
     },
     validation: {
       errors: validationErrors,
-      validateForm
+      validateForm,
+      imageUploadError
     }
   };
 }

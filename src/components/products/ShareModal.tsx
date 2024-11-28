@@ -14,7 +14,7 @@ export default function ShareModal({ product, isOpen, onClose }: ShareModalProps
 
   const shareLinks = {
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-    twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(product.title)}`,
+    twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(product.name)}`,
   };
 
   const copyToClipboard = async () => {
@@ -31,8 +31,8 @@ export default function ShareModal({ product, isOpen, onClose }: ShareModalProps
     if (platform === 'native' && navigator.share) {
       try {
         await navigator.share({
-          title: product.title,
-          text: product.description,
+          title: product.name,
+          text: product.description || '',
           url: shareUrl,
         });
       } catch (error) {

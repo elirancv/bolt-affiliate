@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getStore, getProducts } from '../../lib/api';
+import { getStore, getProducts, getCategories } from '../../lib/api';
 import { useSavedProductsStore } from '../../store/savedProductsStore';
-import type { Store, Product } from '../../types';
+import type { Store, Product, Category } from '../../types';
 import { Store as StoreIcon } from 'lucide-react';
 import SearchBar from '../../components/ui/SearchBar';
-import ProductGrid from '../../components/products/ProductGrid';
+import { ProductCard } from '../../components/products/ProductGrid';
 import StoreFooter from '../../components/stores/StoreFooter';
 import SocialLinks from '../../components/stores/SocialLinks';
 
@@ -13,6 +13,7 @@ export default function StoreView() {
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -24,12 +25,14 @@ export default function StoreView() {
 
     const loadData = async () => {
       try {
-        const [storeData, productsData] = await Promise.all([
+        const [storeData, productsData, categoriesData] = await Promise.all([
           getStore(storeId),
-          getProducts(storeId)
+          getProducts(storeId),
+          getCategories(storeId)
         ]);
         setStore(storeData);
         setProducts(productsData);
+        setCategories(categoriesData || []);
         setFilteredProducts(productsData);
       } catch (error) {
         console.error('Error loading store:', error);
@@ -43,18 +46,21 @@ export default function StoreView() {
 
   useEffect(() => {
     const filtered = products.filter(product => {
+      const productCategory = categories.find(c => c.id === product.category_id);
       const matchesSearch = !searchQuery || 
-        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = !selectedCategory || product.category === selectedCategory;
+        productCategory?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = !selectedCategory || productCategory?.id === selectedCategory;
       return matchesSearch && matchesCategory;
     });
     setFilteredProducts(filtered);
-  }, [searchQuery, selectedCategory, products]);
+  }, [searchQuery, selectedCategory, products, categories]);
 
-  const categories = [...new Set(products.map(product => product.category))].filter(Boolean);
-  const searchSuggestions = products.map(product => product.title);
+  const uniqueCategories = categories.filter(category => 
+    products.some(product => product.category_id === category.id)
+  );
+  const searchSuggestions = products.map(product => product.name);
 
   const handleSaveProduct = (productId: string) => {
     const product = products.find(p => p.id === productId);
@@ -93,68 +99,100 @@ export default function StoreView() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Rest of the component remains the same */}
+      {/* Promotion Banner */}
+      {store?.promotion_settings?.banner_enabled && (
+        <div className="bg-blue-600 text-white text-center py-2 px-4">
+          {store.promotion_settings.banner_text}
+        </div>
+      )}
+
+      {/* Store Header */}
       <header className="bg-white border-b sticky top-0 z-10">
+        {showSocialLinksInHeader && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <div className="flex justify-end">
+              <SocialLinks 
+                links={store.social_links} 
+                className="justify-end"
+                variant="dark" 
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Main header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4 sm:py-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+          <div className="py-4">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-4">
                 {store.logo_url ? (
                   <img 
                     src={store.logo_url} 
                     alt={store.name} 
-                    className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover"
+                    className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg object-cover shadow-sm"
                   />
                 ) : (
-                  <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-blue-100 flex items-center justify-center">
-                    <StoreIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                  <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+                    <StoreIcon className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
                 )}
                 <div>
-                  <h1 className="text-xl sm:text-3xl font-bold text-gray-900">{store.name}</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{store.name}</h1>
                   {store.description && (
-                    <p className="mt-1 text-sm sm:text-base text-gray-600 max-w-2xl">{store.description}</p>
+                    <p className="text-sm text-gray-600 max-w-2xl mt-0.5">{store.description}</p>
                   )}
                 </div>
               </div>
-              {showSocialLinksInHeader && (
-                <div className="flex justify-center sm:justify-end">
-                  <SocialLinks links={store.social_links} />
+
+              <div className="hidden sm:flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <span className="flex items-center">
+                    <span className="mr-2">⭐</span>
+                    {products.length} Products
+                  </span>
+                  <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                  <span className="flex items-center">
+                    <span className="mr-2">🏷️</span>
+                    {uniqueCategories.length} Categories
+                  </span>
                 </div>
-              )}
+              </div>
             </div>
 
+            {/* Search and filters bar */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <SearchBar
-                onSearch={setSearchQuery}
-                suggestions={searchSuggestions}
-                className="w-full sm:max-w-lg"
-                storeId={storeId}
-              />
+              <div className="flex-1 max-w-xl">
+                <SearchBar
+                  onSearch={setSearchQuery}
+                  suggestions={searchSuggestions}
+                  className="w-full"
+                  storeId={storeId}
+                />
+              </div>
 
-              {categories.length > 0 && (
+              {uniqueCategories.length > 0 && (
                 <div className="flex items-center space-x-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
                   <button
                     onClick={() => setSelectedCategory(null)}
-                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 ${
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors ${
                       !selectedCategory
-                        ? 'bg-blue-100 text-blue-700'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     All Products
                   </button>
-                  {categories.map(category => (
+                  {uniqueCategories.map(category => (
                     <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 ${
-                        selectedCategory === category
-                          ? 'bg-blue-100 text-blue-700'
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors ${
+                        selectedCategory === category.id
+                          ? 'bg-blue-600 text-white shadow-sm'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      {category}
+                      {category.name}
                     </button>
                   ))}
                 </div>
@@ -166,12 +204,18 @@ export default function StoreView() {
 
       {/* Main Content */}
       <main className="flex-grow px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto w-full">
-        <ProductGrid
-          products={filteredProducts}
-          storeId={storeId!}
-          onSave={handleSaveProduct}
-          savedProductIds={new Set(Object.keys(useSavedProductsStore.getState().savedProducts))}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          {filteredProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              storeId={storeId!}
+              onSave={handleSaveProduct}
+              isSaved={isProductSaved(product.id)}
+              categoryName={categories.find(c => c.id === product.category_id)?.name}
+            />
+          ))}
+        </div>
       </main>
 
       {/* Footer */}

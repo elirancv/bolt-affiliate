@@ -18,6 +18,7 @@ import AddProduct from './pages/products/AddProduct';
 import EditProduct from './pages/products/EditProduct';
 import Analytics from './pages/Analytics';
 import Pages from './pages/Pages';
+import { ToastProvider } from './components/ui/Toast';
 
 export default function App() {
   const { setUser, refreshSession } = useAuthStore();
@@ -45,43 +46,47 @@ export default function App() {
   }, [setUser, refreshSession]);
 
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        
-        {/* Store Preview Routes */}
-        <Route path="/preview/:storeId" element={<StoreView />} />
-        <Route path="/preview/:storeId/products/:productId" element={<ProductView />} />
-        
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-            {/* Main Routes */}
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/stores" element={<StoreList />} />
-            <Route path="/stores/create" element={<CreateStore />} />
-            <Route path="/products" element={<ProductList />} />
+    <ToastProvider>
+      <div className="min-h-screen bg-gray-100">
+        <Router>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             
-            {/* Store-specific Routes */}
-            <Route path="/stores/:storeId">
-              <Route path="products" element={<ProductList />} />
-              <Route path="products/add" element={<AddProduct />} />
-              <Route path="products/:productId/edit" element={<EditProduct />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="pages" element={<Pages />} />
-              <Route path="settings" element={<StoreSettings />} />
+            {/* Store Preview Routes */}
+            <Route path="/preview/:storeId" element={<StoreView />} />
+            <Route path="/preview/:storeId/products/:productId" element={<ProductView />} />
+            
+            {/* Protected Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                {/* Main Routes */}
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/stores" element={<StoreList />} />
+                <Route path="/stores/create" element={<CreateStore />} />
+                <Route path="/products" element={<ProductList />} />
+                
+                {/* Store-specific Routes */}
+                <Route path="/stores/:storeId">
+                  <Route path="products" element={<ProductList />} />
+                  <Route path="products/add" element={<AddProduct />} />
+                  <Route path="products/:productId/edit" element={<EditProduct />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="pages" element={<Pages />} />
+                  <Route path="settings" element={<StoreSettings />} />
+                </Route>
+                
+                {/* Admin Routes */}
+                <Route path="/admin" element={<AdminDashboard />} />
+              </Route>
             </Route>
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Route>
-        </Route>
 
-        {/* Catch-all route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+            {/* Catch-all route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </div>
+    </ToastProvider>
   );
 }

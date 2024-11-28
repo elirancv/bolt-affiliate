@@ -43,9 +43,10 @@ interface ProductCardProps {
   storeId: string;
   onSave?: (productId: string) => void;
   isSaved: boolean;
+  categoryName?: string;
 }
 
-function ProductCard({ product, storeId, onSave, isSaved }: ProductCardProps) {
+export function ProductCard({ product, storeId, onSave, isSaved, categoryName }: ProductCardProps) {
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [isHovered, setIsHovered] = React.useState(false);
@@ -97,7 +98,7 @@ function ProductCard({ product, storeId, onSave, isSaved }: ProductCardProps) {
     >
       <div 
         onClick={navigateToProduct}
-        className="relative aspect-square cursor-pointer overflow-hidden bg-gray-50"
+        className="relative w-full pt-[100%] cursor-pointer overflow-hidden bg-gray-50"
       >
         {product.image_urls && product.image_urls.length > 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -108,10 +109,10 @@ function ProductCard({ product, storeId, onSave, isSaved }: ProductCardProps) {
             )}
             <img
               src={product.image_urls[currentImageIndex]}
-              alt={product.title}
+              alt={product.name}
               onLoad={handleImageLoad}
               className={cn(
-                "w-full h-full object-contain p-4",
+                "absolute inset-0 w-full h-full object-contain p-4",
                 "transition-all duration-300 group-hover:scale-105",
                 !imageLoaded && "opacity-0"
               )}
@@ -127,33 +128,17 @@ function ProductCard({ product, storeId, onSave, isSaved }: ProductCardProps) {
           <>
             <button
               onClick={handlePrevImage}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 shadow-md text-gray-600 hover:text-gray-900 transition-all sm:opacity-0 sm:group-hover:opacity-100"
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/90 shadow-md text-gray-600 hover:text-gray-900 transition-all sm:opacity-0 sm:group-hover:opacity-100"
             >
-              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={handleNextImage}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 shadow-md text-gray-600 hover:text-gray-900 transition-all sm:opacity-0 sm:group-hover:opacity-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/90 shadow-md text-gray-600 hover:text-gray-900 transition-all sm:opacity-0 sm:group-hover:opacity-100"
             >
-              <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </>
-        )}
-
-        {onSave && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSave(product.id);
-            }}
-            className={cn(
-              "absolute top-2 right-2 p-2 rounded-full shadow-md transition-all",
-              "sm:opacity-0 sm:group-hover:opacity-100",
-              isSaved ? "bg-red-50 text-red-500" : "bg-white/90 text-gray-600 hover:text-gray-900"
-            )}
-          >
-            <Heart className={cn("h-4 w-4 sm:h-5 sm:w-5", isSaved && "fill-current")} />
-          </button>
         )}
 
         {product.image_urls && product.image_urls.length > 1 && (
@@ -163,26 +148,58 @@ function ProductCard({ product, storeId, onSave, isSaved }: ProductCardProps) {
         )}
       </div>
 
-      <div className="p-4">
-        <h3 
-          onClick={navigateToProduct}
-          className="text-base sm:text-lg font-medium text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer"
-        >
-          {product.title}
-        </h3>
-        
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {product.description}
-        </p>
+      <div className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h3 
+              onClick={navigateToProduct}
+              className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors cursor-pointer mb-1"
+            >
+              {product.name}
+            </h3>
+            
+            <p className="text-xs text-gray-600 line-clamp-2">
+              {product.description}
+            </p>
+          </div>
+          {onSave && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSave(product.id);
+              }}
+              className={cn(
+                "p-1.5 rounded-full transition-all flex-shrink-0",
+                isSaved ? "text-red-500" : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <Heart className={cn("h-4 w-4", isSaved && "fill-current")} />
+            </button>
+          )}
+        </div>
 
-        <div className="space-y-3">
+        <div className="mt-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-lg sm:text-xl font-bold text-gray-900">
-              ${product.price.toFixed(2)}
-            </span>
-            {product.category && (
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base font-bold text-gray-900">
+                  ${product.sale_price ? product.sale_price.toFixed(2) : product.price.toFixed(2)}
+                </span>
+                {product.sale_price && (
+                  <span className="text-xs line-through text-gray-500">
+                    ${product.price.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              {product.sale_price && (
+                <span className="text-xs text-green-600 font-medium">
+                  Save {Math.round((1 - product.sale_price/product.price) * 100)}% off
+                </span>
+              )}
+            </div>
+            {categoryName && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                {product.category}
+                {categoryName}
               </span>
             )}
           </div>
@@ -192,10 +209,10 @@ function ProductCard({ product, storeId, onSave, isSaved }: ProductCardProps) {
             onClick={handleBuyNowClick}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="w-full flex items-center justify-center px-3 py-2 border border-transparent rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
           >
             Buy Now
-            <ExternalLink className="ml-1.5 h-4 w-4" />
+            <ExternalLink className="ml-1.5 h-3 w-3" />
           </a>
         </div>
       </div>

@@ -1,205 +1,148 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Save } from 'lucide-react';
-import { getStore, updateStore, deleteStore } from '../../lib/api';
-import type { Store, SocialLinks } from '../../types';
-import FormField from '../../components/ui/FormField';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useStoreForm } from '../../hooks/useStoreForm';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Label } from '../../components/ui/Label';
+import { Switch } from '../../components/ui/Switch';
+import { Input } from '../../components/ui/Input';
+import {
+  ArrowLeft,
+  Save,
+  Facebook,
+  Instagram,
+  MessageCircle,
+  Send,
+  Globe,
+  AlertCircle,
+} from 'lucide-react';
 
 const SOCIAL_PLATFORMS = [
-  { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/your-page' },
-  { key: 'facebook_messenger', label: 'Facebook Messenger', placeholder: 'https://m.me/your-page' },
-  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/your-handle' },
-  { key: 'twitter', label: 'Twitter (X)', placeholder: 'https://twitter.com/your-handle' },
-  { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/your-profile' },
-  { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@your-channel' },
-  { key: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@your-handle' },
-  { key: 'snapchat', label: 'Snapchat', placeholder: 'https://snapchat.com/add/your-username' },
-  { key: 'pinterest', label: 'Pinterest', placeholder: 'https://pinterest.com/your-profile' },
-  { key: 'discord', label: 'Discord', placeholder: 'https://discord.gg/your-invite' },
-  { key: 'whatsapp', label: 'WhatsApp', placeholder: 'https://wa.me/your-number' },
-  { key: 'telegram', label: 'Telegram', placeholder: 'https://t.me/your-username' },
-  { key: 'google_business', label: 'Google Business', placeholder: 'https://business.google.com/your-business' },
-] as const;
+  {
+    key: 'facebook',
+    label: 'Facebook',
+    placeholder: 'https://facebook.com/your-page',
+    icon: Facebook,
+  },
+  {
+    key: 'instagram',
+    label: 'Instagram',
+    placeholder: 'https://instagram.com/@your-handle',
+    icon: Instagram,
+  },
+  {
+    key: 'whatsapp',
+    label: 'WhatsApp',
+    placeholder: 'https://wa.me/your-number',
+    icon: MessageCircle,
+  },
+  {
+    key: 'telegram',
+    label: 'Telegram',
+    placeholder: 'https://t.me/your-username',
+    icon: Send,
+  },
+  {
+    key: 'website',
+    label: 'Website',
+    placeholder: 'https://your-website.com',
+    icon: Globe,
+  },
+];
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+  transition: { duration: 0.2 },
+};
 
 export default function StoreSettings() {
-  const [store, setStore] = useState<Store | null>(null);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [socialLinks, setSocialLinks] = useState<SocialLinks>({});
-  const [socialLinksPosition, setSocialLinksPosition] = useState<'header' | 'footer' | 'both'>('footer');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const { storeId } = useParams();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadStore = async () => {
-      if (!storeId) return;
-      
-      try {
-        const data = await getStore(storeId);
-        setStore(data);
-        setName(data.name);
-        setDescription(data.description || '');
-        setSocialLinks(data.social_links || {});
-        setSocialLinksPosition(data.social_links_position || 'footer');
-      } catch (err: any) {
-        console.error('Error loading store:', err);
-        setError(err.message);
-      }
-    };
+  const {
+    formData,
+    state: { isLoading, isSaving, error, isDirty },
+    updateField,
+    updatePromotionSettings,
+    updateSocialLink,
+    handleSubmit,
+    resetForm,
+  } = useStoreForm({
+    storeId: storeId!,
+    onSuccess: () => {
+      // Instead of navigating away, just show success message
+      // The user can manually go back using the back button
+    },
+  });
 
-    loadStore();
-  }, [storeId]);
-
-  const handleSocialLinkChange = (platform: keyof SocialLinks, value: string) => {
-    setSocialLinks(prev => ({
-      ...prev,
-      [platform]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!storeId) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      await updateStore(storeId, {
-        name,
-        description,
-        social_links: socialLinks,
-        social_links_position: socialLinksPosition,
-      });
-      navigate('/stores');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!storeId || !confirm('Are you sure you want to delete this store? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteStore(storeId);
-      navigate('/stores');
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  if (!store) {
+  if (isLoading) {
     return (
-      <div className="min-h-[400px] flex justify-center items-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          <p className="text-gray-600">Loading store settings...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (!formData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">Store not found</h2>
+        <p className="text-gray-600 mb-4">The store you're looking for doesn't exist.</p>
+        <Button onClick={() => navigate('/stores')}>Back to Stores</Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-full text-gray-600"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-2xl font-bold">Store Settings</h1>
-        </div>
-        <button
-          onClick={handleDelete}
-          className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg flex items-center space-x-2"
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <motion.div
+          initial="initial"
+          animate="animate"
+          variants={fadeInUp}
+          className="flex items-center justify-between mb-8"
         >
-          <Trash2 className="h-5 w-5" />
-          <span>Delete Store</span>
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm">
-        <form onSubmit={handleSubmit} className="divide-y divide-gray-200">
-          {error && (
-            <div className="p-6 bg-red-50 border-l-4 border-red-500">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          {/* Basic Information */}
-          <div className="p-6 space-y-6">
-            <h2 className="text-lg font-medium text-gray-900">Basic Information</h2>
-            
-            <FormField label="Store Name">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </FormField>
-
-            <FormField label="Description">
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </FormField>
-          </div>
-
-          {/* Social Links */}
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">Social Links</h2>
-              <FormField label="Display Position">
-                <select
-                  value={socialLinksPosition}
-                  onChange={(e) => setSocialLinksPosition(e.target.value as 'header' | 'footer' | 'both')}
-                  className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="header">Header Only</option>
-                  <option value="footer">Footer Only</option>
-                  <option value="both">Both Header and Footer</option>
-                </select>
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {SOCIAL_PLATFORMS.map(({ key, label, placeholder }) => (
-                <FormField key={key} label={label}>
-                  <input
-                    type="url"
-                    value={socialLinks[key as keyof SocialLinks] || ''}
-                    onChange={(e) => handleSocialLinkChange(key as keyof SocialLinks, e.target.value)}
-                    placeholder={placeholder}
-                    className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </FormField>
-              ))}
-            </div>
-          </div>
-
-          {/* Form Actions */}
-          <div className="p-6 bg-gray-50 flex justify-end">
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/stores/${storeId}`)}
+              className="rounded-full"
             >
-              {loading ? (
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold text-gray-900">Store Settings</h1>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="outline"
+              onClick={resetForm}
+              disabled={!isDirty || isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!isDirty || isSaving}
+              className="flex items-center space-x-2"
+            >
+              {isSaving ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                  />
                   <span>Saving...</span>
                 </>
               ) : (
@@ -208,9 +151,193 @@ export default function StoreSettings() {
                   <span>Save Changes</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
-        </form>
+        </motion.div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 flex items-start space-x-3"
+          >
+            <AlertCircle className="h-5 w-5 mt-0.5" />
+            <div>
+              <h3 className="font-medium">Error Saving Changes</h3>
+              <p className="text-sm">{error}</p>
+            </div>
+          </motion.div>
+        )}
+
+        <div className="space-y-6">
+          {/* Basic Settings */}
+          <motion.div {...fadeInUp}>
+            <Card>
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Basic Information
+                </h2>
+                <div className="grid gap-6">
+                  <div>
+                    <Label htmlFor="name">Store Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => updateField('name', e.target.value)}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <textarea
+                      id="description"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-1"
+                      rows={3}
+                      value={formData.description || ''}
+                      onChange={(e) =>
+                        updateField('description', e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Promotion Settings */}
+          <motion.div {...fadeInUp}>
+            <Card>
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Promotion Settings
+                </h2>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label
+                        htmlFor="banner-enabled"
+                        className="mb-0 font-medium"
+                      >
+                        Enable Promotion Banner
+                      </Label>
+                      <p className="text-sm text-gray-500">
+                        Show a promotional message at the top of your store
+                      </p>
+                    </div>
+                    <Switch
+                      id="banner-enabled"
+                      checked={formData.promotion_settings?.banner_enabled || false}
+                      onCheckedChange={(checked) =>
+                        updatePromotionSettings('banner_enabled', checked)
+                      }
+                    />
+                  </div>
+
+                  <AnimatePresence>
+                    {formData.promotion_settings?.banner_enabled && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-4"
+                      >
+                        <div>
+                          <Label htmlFor="banner-text">Banner Text</Label>
+                          <Input
+                            id="banner-text"
+                            value={formData.promotion_settings.banner_text}
+                            onChange={(e) =>
+                              updatePromotionSettings('banner_text', e.target.value)
+                            }
+                            placeholder="🎉 Free shipping on orders over $50"
+                            className="mt-1"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="shipping-threshold">
+                            Free Shipping Threshold ($)
+                          </Label>
+                          <Input
+                            id="shipping-threshold"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formData.promotion_settings.free_shipping_threshold}
+                            onChange={(e) =>
+                              updatePromotionSettings(
+                                'free_shipping_threshold',
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                            className="mt-1"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Social Links */}
+          <motion.div {...fadeInUp}>
+            <Card>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Social Links
+                  </h2>
+                  <div className="relative group">
+                    <select
+                      value={formData.social_links_position || 'footer'}
+                      onChange={(e) =>
+                        updateField(
+                          'social_links_position',
+                          e.target.value as 'header' | 'footer' | 'both'
+                        )
+                      }
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white cursor-pointer hover:border-blue-500 transition-colors"
+                    >
+                      <option value="header">Header Only</option>
+                      <option value="footer">Footer Only</option>
+                      <option value="both">Both Header and Footer</option>
+                    </select>
+                    <div className="absolute hidden group-hover:block -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap">
+                      Choose where to display social links
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  {SOCIAL_PLATFORMS.map(({ key, label, placeholder, icon: Icon }) => (
+                    <div key={key} className="flex items-start space-x-3">
+                      <div className="pt-2">
+                        <Icon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <div className="flex-1">
+                        <Label htmlFor={key}>{label}</Label>
+                        <Input
+                          id={key}
+                          placeholder={placeholder}
+                          value={formData.social_links?.[key] || ''}
+                          onChange={(e) =>
+                            updateSocialLink(key, e.target.value)
+                          }
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

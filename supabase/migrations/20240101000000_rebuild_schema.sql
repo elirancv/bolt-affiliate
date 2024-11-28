@@ -67,7 +67,7 @@ CREATE TABLE categories (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Products table
+-- Products table with updated image_urls field
 CREATE TABLE products (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     store_id UUID REFERENCES stores(id) ON DELETE CASCADE,
@@ -78,7 +78,7 @@ CREATE TABLE products (
     sale_price DECIMAL(10,2),
     product_url TEXT NOT NULL,
     affiliate_url TEXT,
-    image_url TEXT,
+    image_urls TEXT[] NOT NULL DEFAULT '{}',  -- Updated field
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'out_of_stock')),
     metadata JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
