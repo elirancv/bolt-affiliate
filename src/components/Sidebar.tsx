@@ -14,12 +14,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/Tooltip';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 import React from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 
 export default function Sidebar() {
   const { isAdmin } = useAdmin();
   const location = useLocation();
   const { storeId } = useParams();
+  const navigate = useNavigate();
 
   const getNavigation = () => {
     if (storeId) {
@@ -51,9 +52,9 @@ export default function Sidebar() {
   const navigation = getNavigation();
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-100 min-h-screen flex flex-col">
-      {/* Navigation */}
-      <nav className="flex-1 py-5 px-2">
+    <aside className="flex flex-col min-h-screen w-56 bg-white border-r border-gray-200">
+      {/* Main Navigation */}
+      <nav className="flex-1 px-2 py-4">
         <div className="space-y-1">
           {navigation.map((item) => (
             <NavLink
@@ -74,13 +75,17 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="mt-auto border-t border-gray-100">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <Settings className="h-4 w-4" />
-            <span>v1.0.0</span>
-          </div>
+      {/* Footer with Settings and Version */}
+      <div className="sticky bottom-0 mt-auto border-t border-gray-200 bg-white">
+        <div className="flex items-center justify-between p-4">
+          <button
+            onClick={() => navigate('/settings')}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+          >
+            <Settings className="h-5 w-5" />
+            <span className="text-sm font-medium">Settings</span>
+          </button>
+          <span className="text-xs text-gray-500">v{import.meta.env.VITE_APP_VERSION || '1.0.0'}</span>
         </div>
       </div>
     </aside>

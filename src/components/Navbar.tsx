@@ -53,12 +53,6 @@ export default function Navbar() {
           
           {user && (
             <div className="flex items-center space-x-4">
-              <button
-                className="flex items-center text-gray-600 hover:text-gray-900"
-                onClick={() => navigate('/settings')}
-              >
-                <Settings className="h-5 w-5" />
-              </button>
               <div className="flex items-center space-x-2">
                 <User className="h-5 w-5 text-gray-600" />
                 <span className="text-sm text-gray-600">{user.email}</span>
