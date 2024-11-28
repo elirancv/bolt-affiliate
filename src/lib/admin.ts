@@ -1,21 +1,35 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase/admin';
+import { createClient } from '@supabase/supabase-js';
 import { format, subDays } from 'date-fns';
 
-export async function checkAdminStatus() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return false;
-
-    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-    if (!adminEmail) {
-      console.error('Admin email not configured');
-      return false;
+// Create a separate admin client with service role key
+const supabaseAdmin = createClient(
+  import.meta.env.VITE_SUPABASE_URL, 
+  import.meta.env.VITE_SUPABASE_SERVICE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
     }
+  }
+)
 
-    return session.user.email === adminEmail;
+export async function checkAdminStatus(): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    console.log('Current User:', user)
+    console.log('Admin Email:', import.meta.env.VITE_ADMIN_EMAIL)
+    
+    // Check if user email matches the admin email in environment variable
+    const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL
+    
+    console.log('Is Admin:', isAdmin)
+    
+    return isAdmin
   } catch (error) {
-    console.error('Error checking admin status:', error);
-    return false;
+    console.error('Error checking admin status:', error)
+    return false
   }
 }
 
@@ -62,8 +76,8 @@ export async function getAdminStats() {
 
     if (metadataError) throw metadataError;
 
-    // Get all users
-    const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
+    // Use the admin client with service role for privileged operations
+    const { data: { users: authUsers }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     if (authError) throw authError;
 
     // Calculate statistics
