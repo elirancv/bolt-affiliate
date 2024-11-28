@@ -44,19 +44,19 @@ export default function StatsCard({
 
   return (
     <div className="bg-white overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <Icon className="h-6 w-6 text-gray-400" aria-hidden="true" />
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" aria-hidden="true" />
           </div>
-          <div className="ml-5 w-0 flex-1">
+          <div className="ml-4 sm:ml-5 w-0 flex-1">
             <dl>
               <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
               <dd>
                 <div className="flex items-baseline">
-                  <p className="text-2xl font-semibold text-gray-900">{value}</p>
+                  <p className="text-xl sm:text-2xl font-semibold text-gray-900">{value}</p>
                   {description && (
-                    <p className="ml-2 flex items-baseline text-sm font-semibold text-gray-500">
+                    <p className="ml-2 flex items-baseline text-xs sm:text-sm font-semibold text-gray-500">
                       {description}
                     </p>
                   )}
@@ -67,21 +67,21 @@ export default function StatsCard({
         </div>
       </div>
       {trend && (
-        <div className="bg-gray-50 px-5 py-3">
+        <div className="bg-gray-50 px-4 sm:px-5 py-2 sm:py-3">
           <div className="flex items-center">
             {trend.positive ? (
-              <ArrowUpRight className="h-5 w-5 text-green-500" aria-hidden="true" />
+              <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" aria-hidden="true" />
             ) : (
-              <ArrowDownRight className="h-5 w-5 text-red-500" aria-hidden="true" />
+              <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" aria-hidden="true" />
             )}
             <span
-              className={`text-sm font-medium ${
+              className={`text-xs sm:text-sm font-medium ${
                 trend.positive ? 'text-green-600' : 'text-red-600'
               } truncate`}
             >
               {trend.value}
             </span>
-            <span className="ml-2 text-sm text-gray-500 truncate">{trend.label}</span>
+            <span className="ml-2 text-xs sm:text-sm text-gray-500 truncate">{trend.label}</span>
           </div>
         </div>
       )}

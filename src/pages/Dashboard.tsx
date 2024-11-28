@@ -152,47 +152,62 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Mobile Navigation */}
       <div className="lg:hidden">
-        <div className="fixed inset-0 flex z-40">
-          <div
-            className={`fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity duration-300 ease-in-out ${
-              isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          
-          <div
-            className={`relative flex-1 flex flex-col max-w-xs w-full bg-white transform transition-transform duration-300 ease-in-out ${
-              isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}
-          >
-            <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-              <div className="flex-shrink-0 flex items-center px-4">
-                <img
-                  className="h-8 w-auto"
-                  src="/logo.png"
-                  alt="Bolt Affiliate"
-                />
+        <button
+          className="fixed top-4 left-4 z-50 p-4 rounded-md bg-white shadow-md"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          <Menu className="h-6 w-6 text-gray-600" />
+        </button>
+        
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 flex z-40">
+            <div
+              className="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            
+            <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+              <div className="absolute top-0 right-0 -mr-12 pt-2">
+                <button
+                  className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span className="sr-only">Close sidebar</span>
+                  <svg className="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <nav className="mt-5 px-2 space-y-1">
-                {/* Add mobile navigation items here */}
-              </nav>
+              <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
+                <div className="flex-shrink-0 flex items-center px-4">
+                  <img
+                    className="h-8 w-auto"
+                    src="/logo.png"
+                    alt="Bolt Affiliate"
+                  />
+                </div>
+                <nav className="mt-5 px-2 space-y-1">
+                  {/* Add mobile navigation items here */}
+                </nav>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Main Content */}
       <div className="lg:pl-0">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-10">
           {/* Header */}
-          <div className="py-6">
-            <div className="flex items-center justify-between">
+          <div className="pb-4 sm:pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <div className="flex-1 min-w-0">
-                <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                <h2 className="text-xl font-bold leading-7 text-gray-900 sm:text-2xl sm:truncate">
                   Dashboard
                 </h2>
               </div>
-              <div className="flex md:ml-4">
+              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                <ProductFilter value={productFilter} onChange={setProductFilter} />
                 <TimeRangeSelector
                   timeRange={timeRange}
                   showTimeMenu={showTimeMenu}
@@ -204,129 +219,41 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-5 xl:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatsCard
               title="Total Stores"
-              value={storeCount}
+              value={storeCount.toString()}
               icon={Store}
-              loading={loading}
-              trend={{
-                value: '+12%',
-                label: 'vs. last period',
-                positive: true
-              }}
             />
             <StatsCard
               title="Total Products"
-              value={productCount}
+              value={productCount.toString()}
               icon={LayoutGrid}
-              loading={loading}
-              trend={{
-                value: '+5%',
-                label: 'vs. last period',
-                positive: true
-              }}
             />
             <StatsCard
               title="Total Visitors"
-              value={visitorCount}
+              value={visitorCount.toString()}
               icon={Users}
-              loading={loading}
-              trend={{
-                value: '+18%',
-                label: 'vs. last period',
-                positive: true
-              }}
             />
             <StatsCard
-              title="Conversion Rate"
-              value={`${conversionRate.toFixed(1)}%`}
+              title="Total Clicks"
+              value={totalClicks.toString()}
               icon={TrendingUp}
-              description={`${totalClicks} clicks`}
-              loading={loading}
-              trend={{
-                value: '+2.5%',
-                label: 'vs. last period',
-                positive: true
-              }}
+              description={`${conversionRate.toFixed(1)}% conversion`}
             />
           </div>
 
-          {/* Main 2-Column Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mt-8">
-            {/* Top Products */}
-            <div className="bg-white rounded-lg shadow-sm xl:col-span-2">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-medium text-gray-900">Top Performing Products</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Your best performing products based on click-through rate
-                    </p>
-                  </div>
-                  <ProductFilter
-                    currentFilter={productFilter}
-                    onFilterChange={setProductFilter}
-                  />
-                </div>
-              </div>
-              <div className="p-6">
-                <TopProducts products={topProducts} loading={loading} />
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow-sm">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Latest updates from your stores
-                </p>
-              </div>
-              <div className="flow-root p-6">
-                <ul role="list" className="-mb-8">
-                  {loading ? (
-                    <div className="animate-pulse space-y-4">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex space-x-4">
-                          <div className="h-10 w-10 rounded-full bg-gray-200"></div>
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : topProducts.slice(0, 5).map((product, idx) => (
-                    <li key={product.id}>
-                      <div className="relative pb-8">
-                        {idx < topProducts.length - 1 && (
-                          <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
-                        )}
-                        <div className="relative flex space-x-3">
-                          <div>
-                            <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                              <Menu className="h-4 w-4 text-white" aria-hidden="true" />
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div>
-                              <div className="text-sm">
-                                <a href="#" className="font-medium text-gray-900">
-                                  {product.name}
-                                </a>
-                              </div>
-                              <p className="mt-0.5 text-sm text-gray-500">
-                                {product.period_clicks} clicks • ${product.price}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          {/* Products Section */}
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium leading-6 text-gray-900">
+                Top Products
+              </h3>
+              <TopProducts
+                products={topProducts}
+                loading={loading}
+                onProductClick={(product) => navigate(`/products/${product.id}`)}
+              />
             </div>
           </div>
         </div>

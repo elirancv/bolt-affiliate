@@ -14,46 +14,52 @@ export default function TimeRangeSelector({
   onTimeRangeChange, 
   onToggleTimeMenu 
 }: TimeRangeSelectorProps) {
-  const timeRanges = {
-    '24h': 'Last 24 hours',
-    '7d': 'Last 7 days',
-    '30d': 'Last 30 days',
-    'all': 'All time'
-  };
+  const timeRanges = [
+    { id: '24h', name: 'Last 24 Hours' },
+    { id: '7d', name: 'Last 7 Days' },
+    { id: '30d', name: 'Last 30 Days' },
+    { id: 'all', name: 'All Time' },
+  ];
+
+  const selectedRange = timeRanges.find(range => range.id === timeRange)?.name || 'Select Time Range';
 
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-48">
       <button
+        type="button"
+        className="w-full bg-white px-3 py-2 text-sm border rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
         onClick={onToggleTimeMenu}
-        className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900"
       >
-        <Clock className="h-4 w-4" />
-        <span>{timeRanges[timeRange as keyof typeof timeRanges]}</span>
-        <ChevronDown className="h-4 w-4" />
+        <div className="flex items-center justify-between">
+          <span className="block truncate">{selectedRange}</span>
+          <ChevronDown className="h-4 w-4 text-gray-400" />
+        </div>
       </button>
 
       {showTimeMenu && (
-        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
-          <div className="py-1" role="menu" aria-orientation="vertical">
-            {Object.entries(timeRanges).map(([value, label]) => (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => onToggleTimeMenu()}
+          />
+          <div className="absolute right-0 z-20 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
+            {timeRanges.map((range) => (
               <button
-                key={value}
+                key={range.id}
+                className={`
+                  w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100
+                  ${timeRange === range.id ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}
+                `}
                 onClick={() => {
-                  onTimeRangeChange(value);
+                  onTimeRangeChange(range.id);
                   onToggleTimeMenu();
                 }}
-                className={`block w-full text-left px-4 py-2 text-sm ${
-                  timeRange === value
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-                role="menuitem"
               >
-                {label}
+                {range.name}
               </button>
             ))}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

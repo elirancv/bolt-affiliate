@@ -13,20 +13,15 @@ export default function TopProducts({ products, loading = false }: TopProductsPr
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
-              <div className="flex-1 space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-              <div className="space-x-2">
-                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, index) => (
+          <div
+            key={index}
+            className="bg-white p-4 rounded-lg shadow-sm animate-pulse"
+          >
+            <div className="w-full h-48 bg-gray-200 rounded-lg mb-4" />
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+            <div className="h-4 bg-gray-200 rounded w-1/2" />
           </div>
         ))}
       </div>
@@ -46,81 +41,37 @@ export default function TopProducts({ products, loading = false }: TopProductsPr
   }
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {products.map((product) => (
         <div
           key={product.id}
-          className="group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-white rounded-lg border border-gray-100 hover:border-blue-100 hover:shadow-md transition-all duration-200"
+          className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
+          onClick={() => navigate(`/user/${product.store_id}/products/${product.id}`)}
         >
-          {/* Product Image */}
-          <div className="relative flex-shrink-0">
-            {product.image_urls?.[0] ? (
-              <img
-                src={product.image_urls[0]}
-                alt={product.name}
-                className="w-20 h-20 rounded-lg object-cover bg-gray-100"
-              />
-            ) : (
-              <div className="w-20 h-20 flex items-center justify-center bg-blue-50 rounded-lg">
-                <ShoppingBag className="h-10 w-10 text-blue-600" />
+          <div className="relative aspect-square mb-4">
+            <img
+              src={product.image_urls?.[0] || '/placeholder.png'}
+              alt={product.name}
+              className="w-full h-full object-cover rounded-lg"
+            />
+            {product.period_clicks > 0 && (
+              <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                {product.period_clicks} clicks
               </div>
             )}
-            <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600">
-              {product.period_clicks || 0}
-            </div>
           </div>
-
-          {/* Product Info */}
-          <div className="flex-1 min-w-0 mt-4 sm:mt-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <h3 className="text-base font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                {product.name}
-              </h3>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                ${product.price}
+          <div className="space-y-2">
+            <h4 className="font-medium text-gray-900 line-clamp-2">
+              {product.name}
+            </h4>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-900">
+                ${product.price?.toFixed(2)}
+              </span>
+              <span className="text-xs text-gray-500">
+                {product.stores?.name}
               </span>
             </div>
-            <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-3">
-              <p className="text-sm text-gray-500 truncate">
-                {product.stores?.name || 'Store name'}
-              </p>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <MousePointerClick className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-500">
-                    {product.period_clicks || 0} clicks
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {Math.random() > 0.5 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                  )}
-                  <span className="text-sm text-gray-500">
-                    {Math.floor(Math.random() * 100)}% vs last period
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={() => navigate(`/user/${product.store_id}/products/${product.id}`)}
-              className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-              title="View Product"
-            >
-              <Eye className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => navigate(`/stores/${product.store_id}/products/${product.id}/edit`)}
-              className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-              title="Edit Product"
-            >
-              <Edit2 className="h-5 w-5" />
-            </button>
           </div>
         </div>
       ))}

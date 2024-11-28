@@ -21,45 +21,43 @@ export default function ProductFilter({ onFilterChange, currentFilter }: Product
   const currentFilterName = filters.find(f => f.id === currentFilter)?.name || 'Most Clicks';
 
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-48">
       <button
+        type="button"
+        className="w-full bg-white px-3 py-2 text-sm border rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
       >
-        <ChevronDown className="-ml-0.5 mr-2 h-4 w-4" /> 
-        {currentFilterName}
+        <div className="flex items-center justify-between">
+          <span className="block truncate">
+            {currentFilterName}
+          </span>
+          <ChevronDown className="h-4 w-4 text-gray-400" />
+        </div>
       </button>
 
       {isOpen && (
         <>
-          <div
+          <div 
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
-            <div className="py-1" role="menu" aria-orientation="vertical">
-              {filters.map((filter) => {
-                const Icon = filter.icon;
-                return (
-                  <button
-                    key={filter.id}
-                    onClick={() => {
-                      onFilterChange(filter.id);
-                      setIsOpen(false);
-                    }}
-                    className={`
-                      w-full text-left px-4 py-2 text-sm flex items-center space-x-2
-                      ${currentFilter === filter.id ? 'bg-gray-100 text-gray-900' : 'text-gray-700'}
-                      hover:bg-gray-50
-                    `}
-                    role="menuitem"
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{filter.name}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="absolute right-0 z-20 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto">
+            {filters.map((filter) => (
+              <button
+                key={filter.id}
+                className={`
+                  w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100
+                  ${currentFilter === filter.id ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}
+                `}
+                onClick={() => {
+                  onFilterChange(filter.id);
+                  setIsOpen(false);
+                }}
+              >
+                <filter.icon className="h-4 w-4 mr-2" />
+                {filter.name}
+              </button>
+            ))}
           </div>
         </>
       )}
