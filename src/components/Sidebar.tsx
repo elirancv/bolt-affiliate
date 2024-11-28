@@ -10,9 +10,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/Tooltip';
 import { cn } from '../lib/utils';
-import { motion } from 'framer-motion';
 import React from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 
