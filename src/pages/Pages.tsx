@@ -1,12 +1,11 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
 
 export default function Pages() {
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Pages</h1>
-      </div>
+      <PageHeader title="Pages" />
 
       <div className="bg-white rounded-lg shadow-sm p-12 text-center">
         <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />

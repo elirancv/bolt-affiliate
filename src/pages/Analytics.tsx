@@ -6,6 +6,7 @@ import AnalyticsOverview from '../components/analytics/AnalyticsOverview';
 import VisitorsChart from '../components/analytics/VisitorsChart';
 import TopProducts from '../components/analytics/TopProducts';
 import ConversionMetrics from '../components/analytics/ConversionMetrics';
+import { PageHeader } from '../components/ui/PageHeader';
 
 export default function Analytics() {
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
@@ -71,9 +72,7 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Analytics</h1>
-      </div>
+      <PageHeader title="Analytics" />
 
       <AnalyticsOverview metrics={overviewMetrics} />
 

@@ -168,6 +168,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- Function to increment page views
+CREATE OR REPLACE FUNCTION increment_page_views(p_store_id UUID, p_date DATE)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO analytics (store_id, date, page_views)
+  VALUES (p_store_id, p_date, 1)
+  ON CONFLICT (store_id, date)
+  DO UPDATE SET
+    page_views = analytics.page_views + 1,
+    updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
+
 -- Function to increment product clicks
 CREATE OR REPLACE FUNCTION increment_product_clicks(p_store_id UUID, p_date DATE)
 RETURNS void AS $$
@@ -221,6 +234,32 @@ CREATE TRIGGER store_created_trigger
     AFTER INSERT ON stores
     FOR EACH ROW
     EXECUTE FUNCTION create_default_categories();
+
+-- Function to refresh store metrics
+CREATE OR REPLACE FUNCTION refresh_store_metrics(store_id UUID)
+RETURNS void AS $$
+BEGIN
+  -- Insert or update store metrics
+  INSERT INTO store_metrics (store_id, product_count, click_count, total_commission, approved_commissions)
+  SELECT 
+    p.store_id,
+    COUNT(DISTINCT p.id) as product_count,
+    COALESCE(SUM(a.product_clicks), 0) as click_count,
+    COALESCE(SUM(c.amount), 0) as total_commission,
+    COALESCE(SUM(CASE WHEN c.status = 'approved' THEN c.amount ELSE 0 END), 0) as approved_commissions
+  FROM products p
+  LEFT JOIN analytics a ON p.store_id = a.store_id
+  LEFT JOIN commissions c ON p.store_id = c.store_id
+  WHERE p.store_id = store_id
+  GROUP BY p.store_id
+  ON CONFLICT (store_id) DO UPDATE SET
+    product_count = EXCLUDED.product_count,
+    click_count = EXCLUDED.click_count,
+    total_commission = EXCLUDED.total_commission,
+    approved_commissions = EXCLUDED.approved_commissions,
+    updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
 
 -- Enable RLS on all tables
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;

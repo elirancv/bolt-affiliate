@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Store, Product, StoreMetrics, Click } from '../types';
+import { format } from 'date-fns';
 
 export async function createStore(store: Omit<Store, 'id' | 'created_at' | 'updated_at'>) {
   try {
@@ -321,6 +322,35 @@ export async function checkSchema() {
     return data;
   } catch (error) {
     console.error('Error checking schema:', error);
+    throw error;
+  }
+}
+
+export async function trackPageView(storeId: string) {
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  try {
+    const { error: analyticsError } = await supabase.rpc(
+      'increment_page_views',
+      { 
+        p_store_id: storeId,
+        p_date: today
+      }
+    );
+
+    if (analyticsError) throw analyticsError;
+
+    // Update store metrics
+    const { error: metricsError } = await supabase.rpc(
+      'refresh_store_metrics',
+      { store_id: storeId }
+    );
+
+    if (metricsError) throw metricsError;
+
+    return true;
+  } catch (error) {
+    console.error('Error tracking page view:', error);
     throw error;
   }
 }

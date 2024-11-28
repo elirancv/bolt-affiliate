@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { getStores, getProducts, deleteProduct } from '../../lib/api';
 import type { Store, Product } from '../../types';
 import { Plus, Package, Store as StoreIcon, ExternalLink, Pencil, Trash2, LayoutGrid, List } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 type ViewMode = 'grid' | 'list';
 
@@ -275,21 +276,23 @@ export default function ProductList() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold">Products</h1>
-          <div className="flex items-center space-x-2 bg-white rounded-lg shadow-sm p-1">
-            <ViewModeButton mode="grid" icon={LayoutGrid} label="Grid view" />
-            <ViewModeButton mode="list" icon={List} label="List view" />
-          </div>
+      <PageHeader 
+        title="Products"
+        actions={
+          <button
+            onClick={() => navigate(`/stores/${storeId}/products/add`)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Product
+          </button>
+        }
+      />
+      <div className="flex items-center space-x-4 mb-6">
+        <div className="flex items-center space-x-2 bg-white rounded-lg shadow-sm p-1">
+          <ViewModeButton mode="grid" icon={LayoutGrid} label="Grid view" />
+          <ViewModeButton mode="list" icon={List} label="List view" />
         </div>
-        <button
-          onClick={() => navigate(`/stores/${storeId}/products/add`)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Product
-        </button>
       </div>
 
       {renderProductsByViewMode()}

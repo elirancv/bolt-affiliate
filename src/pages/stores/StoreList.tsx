@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { getStores } from '../../lib/api';
+import { trackPageView } from '../../lib/analytics';
 import type { Store } from '../../types';
 import { 
   Plus, 
@@ -54,6 +55,17 @@ export default function StoreList() {
       return;
     }
     window.open(`${netlifyUrl}/preview/${storeId}`, '_blank');
+  };
+
+  const handleStoreClick = async (storeId: string) => {
+    try {
+      await trackPageView(storeId);
+      navigate(`/stores/${storeId}/products`);
+    } catch (error) {
+      console.error('Error tracking store view:', error);
+      // Still navigate even if tracking fails
+      navigate(`/stores/${storeId}/products`);
+    }
   };
 
   const filteredStores = stores.filter(store => 
@@ -179,7 +191,7 @@ export default function StoreList() {
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <button
-                    onClick={() => navigate(`/stores/${store.id}/products`)}
+                    onClick={() => handleStoreClick(store.id)}
                     className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center"
                   >
                     Manage Store
@@ -238,7 +250,7 @@ export default function StoreList() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center space-x-3">
                         <button
-                          onClick={() => navigate(`/stores/${store.id}/products`)}
+                          onClick={() => handleStoreClick(store.id)}
                           className="text-blue-600 hover:text-blue-700"
                         >
                           Manage

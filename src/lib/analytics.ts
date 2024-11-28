@@ -1,11 +1,12 @@
-import { supabase } from './supabase';
 import { format } from 'date-fns';
+import { supabase } from './supabase';
 
 export async function trackProductClick(storeId: string, productId: string) {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   try {
-    const { error } = await supabase.rpc(
+    // Track the click in analytics
+    const { error: analyticsError } = await supabase.rpc(
       'increment_product_clicks',
       { 
         p_store_id: storeId,
@@ -13,7 +14,16 @@ export async function trackProductClick(storeId: string, productId: string) {
       }
     );
 
-    if (error) throw error;
+    if (analyticsError) throw analyticsError;
+
+    // Update store metrics
+    const { error: metricsError } = await supabase.rpc(
+      'refresh_store_metrics',
+      { store_id: storeId }
+    );
+
+    if (metricsError) throw metricsError;
+
     return true;
   } catch (error) {
     console.error('Error tracking product click:', error);
@@ -25,19 +35,30 @@ export async function trackPageView(storeId: string) {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   try {
-    const { error } = await supabase.rpc(
-      'increment_page_view',
+    // Track the page view in analytics
+    const { error: analyticsError } = await supabase.rpc(
+      'increment_page_views',
       { 
         p_store_id: storeId,
         p_date: today
       }
     );
 
-    if (error) throw error;
+    if (analyticsError) throw analyticsError;
+
+    // Update store metrics
+    const { error: metricsError } = await supabase.rpc(
+      'refresh_store_metrics',
+      { store_id: storeId }
+    );
+
+    if (metricsError) throw metricsError;
+
     return true;
   } catch (error) {
     console.error('Error tracking page view:', error);
-    throw error;
+    // Don't throw the error to prevent breaking navigation
+    return false;
   }
 }
 
