@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shopping Bag -->
+  <path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Bag Handles -->
+  <path d="M3 6H21" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Chain Links -->
+  <path d="M9 10C9 11.1046 8.10457 12 7 12C5.89543 12 5 11.1046 5 10C5 8.89543 5.89543 8 7 8C8.10457 8 9 8.89543 9 10Z" stroke="#2563EB" stroke-width="1.5"/>
+  <path d="M19 10C19 11.1046 18.1046 12 17 12C15.8954 12 15 11.1046 15 10C15 8.89543 15.8954 8 17 8C18.1046 8 19 8.89543 19 10Z" stroke="#2563EB" stroke-width="1.5"/>
+  
+  <!-- Link Connection -->
+  <path d="M9 10H15" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Small Link in Center -->
+  <circle cx="12" cy="10" r="1" fill="#2563EB"/>
+</svg>

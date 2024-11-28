@@ -16,7 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'X-Client-Info': 'affiliate-store-builder'
+      'X-Client-Info': 'linkxstore'
     }
   }
 });
