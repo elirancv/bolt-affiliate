@@ -80,6 +80,8 @@ export interface Product {
   product_url: string;
   affiliate_url?: string;
   image_urls?: string[];
+  clicks?: number;
+  last_clicked_at?: string;
   status: 'active' | 'inactive' | 'out_of_stock';
   metadata?: Record<string, any>;
   created_at: string;

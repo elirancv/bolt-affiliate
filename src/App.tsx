@@ -18,6 +18,7 @@ import AddProduct from './pages/products/AddProduct';
 import EditProduct from './pages/products/EditProduct';
 import Analytics from './pages/Analytics';
 import Pages from './pages/Pages';
+import StoreDetails from './pages/stores/StoreDetails';
 import { ToastProvider } from './components/ui/Toast';
 
 export default function App() {
@@ -73,6 +74,7 @@ export default function App() {
                 
                 {/* Store-specific Routes */}
                 <Route path="/stores/:storeId">
+                  <Route index element={<StoreDetails />} />
                   <Route path="products" element={<ProductList />} />
                   <Route path="products/add" element={<AddProduct />} />
                   <Route path="products/:productId/edit" element={<EditProduct />} />

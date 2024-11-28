@@ -2,36 +2,25 @@ import { format } from 'date-fns';
 import { supabase } from './supabase';
 
 export async function trackProductClick(storeId: string, productId: string) {
-  const today = format(new Date(), 'yyyy-MM-dd');
-
   try {
-    // Track the click in analytics
-    const { error: analyticsError } = await supabase.rpc(
+    // Track the click using increment_product_clicks function
+    const { error } = await supabase.rpc(
       'increment_product_clicks',
       { 
         p_store_id: storeId,
-        p_date: today
+        p_product_id: productId
       }
     );
 
-    if (analyticsError) throw analyticsError;
-
-    // Record the click with source information
-    const { error: clickError } = await supabase
-      .from('clicks')
-      .insert({
-        store_id: storeId,
-        product_id: productId,
-        source: window.location.hostname,
-        referrer: document.referrer
-      });
-
-    if (clickError) throw clickError;
+    if (error) {
+      console.error('Error in increment_product_clicks:', error);
+      throw error;
+    }
 
     return true;
   } catch (error) {
     console.error('Error tracking product click:', error);
-    return false;
+    throw error;
   }
 }
 

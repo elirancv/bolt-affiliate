@@ -156,41 +156,36 @@ export async function deleteStore(storeId: string) {
 
 export async function createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
   try {
-    console.log('Creating product with data:', product);
-    
-    // Check schema first
-    await checkSchema(product);
-    
-    // First check if category_id is provided and exists
-    if (product.category_id) {
-      console.log('Checking category:', product.category_id);
-      const { data: category, error: categoryError } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('id', product.category_id)
-        .single();
-
-      if (categoryError) {
-        console.error('Category error:', categoryError);
-        throw new Error('Invalid category_id');
-      }
+    // Check if user is authenticated
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session?.user) {
+      throw new Error('User not authenticated');
     }
 
+    // Check if user has access to the store
+    const { data: store } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('id', product.store_id)
+      .eq('user_id', session.session.user.id)
+      .single();
+
+    if (!store) {
+      throw new Error('Store not found or user does not have access');
+    }
+
+    // Create the product
     const { data, error } = await supabase
       .from('products')
       .insert([{
         ...product,
-        status: product.status || 'active'
+        clicks: 0,
+        last_clicked_at: null
       }])
       .select()
       .single();
 
-    if (error) {
-      console.error('Product creation error:', error);
-      throw error;
-    }
-    
-    console.log('Product created successfully:', data);
+    if (error) throw error;
     return data;
   } catch (error) {
     console.error('Error creating product:', error);
@@ -353,6 +348,26 @@ export async function trackPageView(storeId: string) {
     return true;
   } catch (error) {
     console.error('Error tracking page view:', error);
+    throw error;
+  }
+}
+
+export async function trackProductClick(storeId: string, productId: string) {
+  try {
+    // Use the increment_product_clicks function to update both analytics and product clicks
+    const { error } = await supabase.rpc('increment_product_clicks', {
+      p_store_id: storeId,
+      p_product_id: productId
+    });
+
+    if (error) {
+      console.error('Error in increment_product_clicks:', error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error tracking product click:', error);
     throw error;
   }
 }
