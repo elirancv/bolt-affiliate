@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getStoreAnalytics } from '../../lib/analytics';
 import { Users, MousePointerClick, TrendingUp, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Skeleton } from '../ui/skeleton';
+import { Skeleton } from '../ui/Skeleton';
 
 interface StoreMetricsProps {
   storeId: string;
