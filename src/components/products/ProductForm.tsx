@@ -249,10 +249,10 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="max-w-5xl mx-auto">
+    <div className="bg-gradient-to-b from-gray-50 to-white">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="relative max-w-3xl mx-auto px-3 sm:px-6 pb-24">
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg shadow-sm">
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-r-lg shadow-sm">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -266,16 +266,16 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-6">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <h2 className="text-2xl font-semibold text-white">
+              <div className="flex items-center space-x-3">
+                <h2 className="text-lg sm:text-xl font-semibold text-white">
                   Product Details
                 </h2>
                 {initialData && (
-                  <span className="px-3 py-1 bg-blue-400/20 text-white text-sm rounded-full">
+                  <span className="px-2 py-1 bg-blue-400/20 text-white text-sm rounded-full">
                     Editing
                   </span>
                 )}
@@ -285,23 +285,23 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                   type="button"
                   onClick={handleSyncWithAmazon}
                   disabled={isProcessing}
-                  className="inline-flex items-center px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors backdrop-blur-sm"
+                  className="inline-flex items-center px-3 py-1.5 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors backdrop-blur-sm text-sm"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  {isProcessing ? 'Syncing...' : 'Sync with Amazon'}
+                  {isProcessing ? 'Syncing...' : 'Sync'}
                 </button>
               )}
             </div>
           </div>
 
-          <div className="p-8">
-            <div className="space-y-8">
+          <div className="p-4">
+            <div className="space-y-4">
               {/* Basic Info Section */}
-              <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-medium text-gray-900 mb-6">Basic Information</h3>
-                <div className="space-y-6">
+              <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                <h3 className="text-base font-medium text-gray-900 mb-4">Basic Information</h3>
+                <div className="space-y-4">
                   {/* Affiliate URL */}
                   <FormField
                     label="Affiliate URL"
@@ -319,11 +319,11 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                         {...register('affiliate_url')}
                         type="url"
                         placeholder="https://example.com/product?affiliate=your-id"
-                        className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                        className="block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow text-sm"
                       />
                       {isProcessing && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
                         </div>
                       )}
                     </div>
@@ -334,7 +334,7 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                     <input
                       type="text"
                       {...register('name')}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow text-sm"
                       placeholder="Enter product name"
                     />
                   </FormField>
@@ -343,8 +343,8 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                   <FormField label="Description" error={errors.description?.message}>
                     <textarea
                       {...register('description')}
-                      rows={4}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                      rows={3}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow text-sm"
                       placeholder="Enter product description"
                     />
                   </FormField>
@@ -352,10 +352,10 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
               </div>
 
               {/* Pricing & Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 {/* Pricing Section */}
-                <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
-                  <h3 className="text-lg font-medium text-gray-900 mb-6">Pricing</h3>
+                <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                  <h3 className="text-base font-medium text-gray-900 mb-4">Pricing</h3>
                   <div className="space-y-4">
                     <FormField label="Price" error={errors.price?.message}>
                       <div className="relative">
@@ -366,7 +366,7 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                           type="number"
                           step="0.01"
                           {...register('price', { valueAsNumber: true })}
-                          className="w-full pl-7 pr-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                          className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow text-sm"
                           placeholder="0.00"
                         />
                       </div>
@@ -381,7 +381,7 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                           type="number"
                           step="0.01"
                           {...register('sale_price', { valueAsNumber: true })}
-                          className="w-full pl-7 pr-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                          className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow text-sm"
                           placeholder="0.00"
                         />
                       </div>
@@ -390,14 +390,14 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                 </div>
 
                 {/* Product Details Section */}
-                <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
-                  <h3 className="text-lg font-medium text-gray-900 mb-6">Product Details</h3>
+                <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                  <h3 className="text-base font-medium text-gray-900 mb-4">Product Details</h3>
                   <div className="space-y-4">
                     <FormField label="Product URL" error={errors.product_url?.message}>
                       <input
                         type="url"
                         {...register('product_url')}
-                        className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow text-sm"
                         placeholder="https://"
                       />
                     </FormField>
@@ -413,7 +413,7 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                     <FormField label="Status" error={errors.status?.message}>
                       <select
                         {...register('status')}
-                        className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        className="block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
                       >
                         <option value="active" className="text-green-700 bg-green-50">Active</option>
                         <option value="inactive" className="text-yellow-700 bg-yellow-50">Inactive</option>
@@ -425,8 +425,8 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
               </div>
 
               {/* Images Section */}
-              <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-medium text-gray-900 mb-6">Product Images</h3>
+              <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                <h3 className="text-base font-medium text-gray-900 mb-4">Product Images</h3>
                 <div className="space-y-4">
                   <ImageSlider
                     images={imageUrls || []}
@@ -437,7 +437,7 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                   />
                   {/* New Image URL Input */}
                   {isAddingImage && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <div className="flex-1">
                         <input
                           type="text"
@@ -469,17 +469,19 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Form Actions */}
-            <div className="mt-8 flex justify-end">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all shadow-sm hover:shadow-md"
-              >
-                {loading ? 'Saving...' : 'Save Product'}
-              </button>
-            </div>
+        {/* Sticky Footer */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 z-10">
+          <div className="max-w-3xl mx-auto flex justify-end">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all shadow-sm hover:shadow-md text-sm font-medium min-w-[100px]"
+            >
+              {loading ? 'Saving...' : 'Save'}
+            </button>
           </div>
         </div>
       </form>

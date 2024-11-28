@@ -50,9 +50,9 @@ export default function Sidebar() {
   const navigation = getNavigation();
 
   return (
-    <aside className="flex flex-col min-h-screen w-56 bg-white border-r border-gray-200">
+    <aside className="sticky top-0 h-screen w-56 bg-white border-r border-gray-200">
       {/* Main Navigation */}
-      <nav className="flex-1 px-2 py-4">
+      <nav className="px-2 py-4">
         <div className="space-y-1">
           {navigation.map((item) => (
             <NavLink
@@ -72,20 +72,6 @@ export default function Sidebar() {
           ))}
         </div>
       </nav>
-
-      {/* Footer with Settings and Version */}
-      <div className="sticky bottom-0 mt-auto border-t border-gray-200 bg-white">
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={() => navigate('/settings')}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-          >
-            <Settings className="h-5 w-5" />
-            <span className="text-sm font-medium">Settings</span>
-          </button>
-          <span className="text-xs text-gray-500">v{import.meta.env.VITE_APP_VERSION || '1.0.0'}</span>
-        </div>
-      </div>
     </aside>
   );
 }
