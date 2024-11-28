@@ -104,6 +104,40 @@ export async function getStore(storeId: string) {
   }
 }
 
+export async function getPublicStore(storeId: string) {
+  try {
+    const { data: store, error: storeError } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('id', storeId)
+      .eq('status', 'active')  // Only return active stores
+      .single();
+
+    if (storeError) throw storeError;
+
+    return store;
+  } catch (error) {
+    console.error('Error getting public store:', error);
+    throw error;
+  }
+}
+
+export async function getPublicProducts(storeId: string) {
+  try {
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('store_id', storeId)
+      .eq('status', 'active');  // Only return active products
+
+    if (error) throw error;
+    return products;
+  } catch (error) {
+    console.error('Error getting public products:', error);
+    throw error;
+  }
+}
+
 export async function updateStore(storeId: string, updates: Partial<Store>) {
   try {
     // Remove computed fields that shouldn't be updated

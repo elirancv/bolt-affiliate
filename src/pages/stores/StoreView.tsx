@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getStore, getProducts, getCategories } from '../../lib/api';
+import { getPublicStore, getPublicProducts, getCategories } from '../../lib/api';
 import { useSavedProductsStore } from '../../store/savedProductsStore';
 import type { Store, Product, Category } from '../../types';
 import { Store as StoreIcon } from 'lucide-react';
@@ -26,16 +26,17 @@ export default function StoreView() {
     const loadData = async () => {
       try {
         const [storeData, productsData, categoriesData] = await Promise.all([
-          getStore(storeId),
-          getProducts(storeId),
+          getPublicStore(storeId),
+          getPublicProducts(storeId),
           getCategories(storeId)
         ]);
         setStore(storeData);
-        setProducts(productsData);
+        setProducts(productsData || []);
         setCategories(categoriesData || []);
-        setFilteredProducts(productsData);
+        setFilteredProducts(productsData || []);
       } catch (error) {
         console.error('Error loading store:', error);
+        setStore(null);
       } finally {
         setLoading(false);
       }

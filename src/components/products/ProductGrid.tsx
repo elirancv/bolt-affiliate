@@ -80,13 +80,26 @@ export function ProductCard({ product, storeId, onSave, isSaved, categoryName }:
 
   const handleBuyNowClick = async (e: React.MouseEvent<HTMLAnchorElement> | React.TouchEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    e.stopPropagation();  
+    e.stopPropagation();
+    
+    // Get the URL to open
+    const url = product.affiliate_url || product.product_url;
+    if (!url) {
+      console.error('No URL available for product:', product.id);
+      return;
+    }
+
     try {
       await trackProductClick(storeId, product.id);
-      window.open(product.affiliate_url || product.product_url, '_blank');
     } catch (error) {
       console.error('Error tracking product click:', error);
-      window.open(product.affiliate_url || product.product_url, '_blank');
+    }
+
+    // Open URL in new tab
+    const newWindow = window.open(url, '_blank');
+    if (!newWindow) {
+      // If popup was blocked, try opening in same window
+      window.location.href = url;
     }
   };
 
@@ -207,13 +220,12 @@ export function ProductCard({ product, storeId, onSave, isSaved, categoryName }:
           <a
             href={product.affiliate_url || product.product_url}
             onClick={handleBuyNowClick}
-            onTouchEnd={handleBuyNowClick}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center px-3 py-2 border border-transparent rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors touch-manipulation"
+            onTouchStart={handleBuyNowClick}
+            className="w-full flex items-center justify-center px-3 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
             Buy Now
-            <ExternalLink className="ml-1.5 h-3 w-3" />
+            <ExternalLink className="ml-1.5 h-4 w-4" />
           </a>
         </div>
       </div>
