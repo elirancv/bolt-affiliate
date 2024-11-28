@@ -16,7 +16,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'X-Client-Info': 'linkxstore'
+      'X-Client-Info': 'bolt-affiliate',
+      'Accept': '*/*',
+      'Prefer': 'return=minimal'
     }
   }
 });

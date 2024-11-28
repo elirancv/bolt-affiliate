@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Store, Product, StoreMetrics, Click } from '../types';
+import type { Store, Product, StoreMetrics, Click, Category } from '../types';
 import { format } from 'date-fns';
 
 export async function createStore(store: Omit<Store, 'id' | 'created_at' | 'updated_at'>) {
@@ -106,15 +106,51 @@ export async function getStore(storeId: string) {
 
 export async function getPublicStore(storeId: string) {
   try {
+    console.log('Fetching public store:', storeId);
+    
+    // First, try to get the store without any filters to see if it exists
+    const { data: rawStore, error: rawError } = await supabase
+      .from('stores')
+      .select('id, name, status')
+      .eq('id', storeId)
+      .single()
+      .returns<{ id: string; name: string; status: string } | null>();
+
+    if (rawError) {
+      console.error('Error checking store existence:', rawError);
+    } else {
+      console.log('Raw store data:', rawStore);
+    }
+
+    // Now try with the active filter
     const { data: store, error: storeError } = await supabase
       .from('stores')
       .select('*')
       .eq('id', storeId)
-      .eq('status', 'active')  // Only return active stores
-      .single();
+      .eq('status', 'active')
+      .single()
+      .returns<Store | null>();
 
-    if (storeError) throw storeError;
+    if (storeError) {
+      console.error('Supabase error fetching active store:', {
+        error: storeError,
+        message: storeError.message,
+        details: storeError.details,
+        hint: storeError.hint,
+        code: storeError.code
+      });
+      throw storeError;
+    }
 
+    if (!store) {
+      console.error('Store not found or not active:', storeId);
+      if (rawStore) {
+        console.log('Store exists but might be inactive. Status:', rawStore.status);
+      }
+      throw new Error('Store not found or not accessible');
+    }
+
+    console.log('Successfully found active store:', store.id, store.name);
     return store;
   } catch (error) {
     console.error('Error getting public store:', error);
@@ -124,16 +160,45 @@ export async function getPublicStore(storeId: string) {
 
 export async function getPublicProducts(storeId: string) {
   try {
+    console.log('Fetching public products for store:', storeId);
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
       .eq('store_id', storeId)
-      .eq('status', 'active');  // Only return active products
+      .eq('status', 'active')
+      .returns<Product[]>();
 
-    if (error) throw error;
-    return products;
+    if (error) {
+      console.error('Supabase error fetching products:', error);
+      throw error;
+    }
+
+    console.log(`Found ${products?.length || 0} products`);
+    return products || [];
   } catch (error) {
     console.error('Error getting public products:', error);
+    throw error;
+  }
+}
+
+export async function getPublicCategories(storeId: string) {
+  try {
+    console.log('Fetching public categories for store:', storeId);
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('store_id', storeId)
+      .returns<Category[]>();
+
+    if (error) {
+      console.error('Supabase error fetching categories:', error);
+      throw error;
+    }
+
+    console.log(`Found ${categories?.length || 0} categories`);
+    return categories || [];
+  } catch (error) {
+    console.error('Error getting public categories:', error);
     throw error;
   }
 }

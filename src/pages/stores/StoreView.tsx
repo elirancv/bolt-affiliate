@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getPublicStore, getPublicProducts, getCategories } from '../../lib/api';
+import { getPublicStore, getPublicProducts, getPublicCategories } from '../../lib/api';
 import { useSavedProductsStore } from '../../store/savedProductsStore';
 import type { Store, Product, Category } from '../../types';
 import { Store as StoreIcon } from 'lucide-react';
@@ -17,6 +17,7 @@ export default function StoreView() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { storeId } = useParams();
   const { saveProduct, unsaveProduct, isProductSaved } = useSavedProductsStore();
 
@@ -25,18 +26,28 @@ export default function StoreView() {
 
     const loadData = async () => {
       try {
+        console.log('Loading store data for:', storeId);
         const [storeData, productsData, categoriesData] = await Promise.all([
           getPublicStore(storeId),
           getPublicProducts(storeId),
-          getCategories(storeId)
+          getPublicCategories(storeId)
         ]);
+
+        console.log('Store data loaded:', {
+          store: storeData?.id,
+          productsCount: productsData?.length,
+          categoriesCount: categoriesData?.length
+        });
+
         setStore(storeData);
-        setProducts(productsData || []);
-        setCategories(categoriesData || []);
-        setFilteredProducts(productsData || []);
-      } catch (error) {
-        console.error('Error loading store:', error);
+        setProducts(productsData);
+        setCategories(categoriesData);
+        setFilteredProducts(productsData);
+        setError(null);
+      } catch (error: any) {
+        console.error('Error loading store data:', error);
         setStore(null);
+        setError(error.message || 'Failed to load store');
       } finally {
         setLoading(false);
       }
@@ -85,12 +96,15 @@ export default function StoreView() {
     );
   }
 
-  if (!store) {
+  if (!store || error) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
         <StoreIcon className="h-16 w-16 text-gray-400 mb-4" />
         <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Store not found</h2>
-        <p className="text-gray-600 text-center">The store you're looking for doesn't exist or has been removed.</p>
+        <p className="text-gray-600 text-center mb-2">The store you're looking for doesn't exist or has been removed.</p>
+        {error && (
+          <p className="text-sm text-red-600 text-center mt-2">Error: {error}</p>
+        )}
       </div>
     );
   }
