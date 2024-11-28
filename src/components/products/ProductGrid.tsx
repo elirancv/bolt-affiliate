@@ -78,15 +78,15 @@ export function ProductCard({ product, storeId, onSave, isSaved, categoryName }:
     navigate(`/preview/${storeId}/products/${product.id}`);
   };
 
-  const handleBuyNowClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleBuyNowClick = async (e: React.MouseEvent<HTMLAnchorElement> | React.TouchEvent<HTMLAnchorElement>) => {
     e.preventDefault();
+    e.stopPropagation();  
     try {
       await trackProductClick(storeId, product.id);
-      window.open(product.affiliate_url, '_blank');
+      window.open(product.affiliate_url || product.product_url, '_blank');
     } catch (error) {
       console.error('Error tracking product click:', error);
-      // Still open the link even if tracking fails
-      window.open(product.affiliate_url, '_blank');
+      window.open(product.affiliate_url || product.product_url, '_blank');
     }
   };
 
@@ -205,11 +205,12 @@ export function ProductCard({ product, storeId, onSave, isSaved, categoryName }:
           </div>
 
           <a
-            href={product.affiliate_url}
+            href={product.affiliate_url || product.product_url}
             onClick={handleBuyNowClick}
+            onTouchEnd={handleBuyNowClick}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center px-3 py-2 border border-transparent rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="w-full flex items-center justify-center px-3 py-2 border border-transparent rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors touch-manipulation"
           >
             Buy Now
             <ExternalLink className="ml-1.5 h-3 w-3" />
