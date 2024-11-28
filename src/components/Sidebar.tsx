@@ -32,8 +32,8 @@ export default function Sidebar() {
     // Main navigation, sorted alphabetically
     const mainNav = [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-      { name: 'Stores', href: '/stores', icon: Store },
       { name: 'Products', href: '/products', icon: ShoppingBag },
+      { name: 'Stores', href: '/stores', icon: Store },
     ];
 
     // Add admin option if user is admin (at the top)

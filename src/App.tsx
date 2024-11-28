@@ -32,15 +32,10 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const metadata = session.user.user_metadata;
         setUser({
           id: session.user.id,
           email: session.user.email!,
-          metadata: {
-            first_name: metadata?.first_name,
-            last_name: metadata?.last_name,
-            subscription_tier: metadata?.subscription_tier || 'free'
-          }
+          subscription_tier: 'free',
         });
       } else {
         setUser(null);
