@@ -36,7 +36,7 @@ export default function Sidebar() {
 
     // Main navigation in specific order
     const mainNav = [
-      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Stores', href: '/stores', icon: Store },
       { name: 'Products', href: '/products', icon: ShoppingBag },
     ];
