@@ -31,9 +31,11 @@ export default function Login() {
         setUser({
           id: authData.user.id,
           email: authData.user.email!,
-          first_name: metadata?.first_name || '',
-          last_name: metadata?.last_name || '',
-          subscription_tier: 'free',
+          metadata: {
+            first_name: metadata?.first_name || '',
+            last_name: metadata?.last_name || '',
+            subscription_tier: metadata?.subscription_tier || 'free'
+          }
         });
         navigate('/');
       }

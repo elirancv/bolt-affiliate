@@ -34,6 +34,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (error) throw error;
       
       if (session?.user) {
+        console.log('User metadata:', session.user.user_metadata);
+        console.log('Full user:', session.user);
         const metadata = session.user.user_metadata as UserMetadata;
         const user: User = {
           id: session.user.id,

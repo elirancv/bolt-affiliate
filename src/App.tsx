@@ -35,7 +35,11 @@ export default function App() {
         setUser({
           id: session.user.id,
           email: session.user.email!,
-          subscription_tier: 'free',
+          metadata: {
+            first_name: session.user.user_metadata?.first_name,
+            last_name: session.user.user_metadata?.last_name,
+            subscription_tier: session.user.user_metadata?.subscription_tier || 'free'
+          }
         });
       } else {
         setUser(null);
