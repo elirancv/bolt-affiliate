@@ -26,7 +26,7 @@ interface StoreWithStats extends Store {
 export default function StoreList() {
   const [stores, setStores] = useState<StoreWithStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuthStore();
   const navigate = useNavigate();
