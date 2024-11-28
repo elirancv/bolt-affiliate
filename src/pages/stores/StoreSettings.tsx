@@ -104,41 +104,45 @@ export default function StoreSettings() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Store Settings"
-        actions={
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="outline"
-              onClick={resetForm}
-              disabled={!isDirty || isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!isDirty || isSaving}
-              className="flex items-center space-x-2"
-            >
-              {isSaving ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                  />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  <span>Save Changes</span>
-                </>
-              )}
-            </Button>
-          </div>
-        }
-      />
+      {/* Main Header */}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Store Settings</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Customize and configure your store
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            onClick={resetForm}
+            disabled={!isDirty || isSaving}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!isDirty || isSaving}
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            {isSaving ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                />
+                <span className="ml-2">Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
 
       {error && (
         <motion.div

@@ -159,7 +159,7 @@ export async function createProduct(product: Omit<Product, 'id' | 'created_at' |
     console.log('Creating product with data:', product);
     
     // Check schema first
-    await checkSchema();
+    await checkSchema(product);
     
     // First check if category_id is provided and exists
     if (product.category_id) {
@@ -310,10 +310,10 @@ export async function refreshMetrics() {
   }
 }
 
-export async function checkSchema() {
+export async function checkSchema(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
   try {
     const { data, error } = await supabase
-      .rpc('check_schema');
+      .rpc('check_schema', { product });
 
     if (error) {
       console.error('Schema check error:', error);

@@ -1,7 +1,10 @@
-export interface User {
+export type User = {
   id: string;
   email: string;
-}
+  first_name: string;
+  last_name: string;
+  subscription_tier: 'free' | 'premium';
+};
 
 export interface AffiliateNetwork {
   id: string;

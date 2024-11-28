@@ -19,22 +19,29 @@ export default function Sidebar() {
 
   const getNavigation = () => {
     if (storeId) {
-      // Store-specific navigation
+      // Store-specific navigation, sorted alphabetically (except "Back to Stores" which should stay first)
       return [
+        { name: 'Back to Stores', href: '/stores', icon: ArrowLeft },
         { name: 'Analytics', href: `/stores/${storeId}/analytics`, icon: BarChart },
         { name: 'Pages', href: `/stores/${storeId}/pages`, icon: FileText },
         { name: 'Products', href: `/stores/${storeId}/products`, icon: ShoppingBag },
         { name: 'Settings', href: `/stores/${storeId}/settings`, icon: Settings },
-      ].sort((a, b) => a.name.localeCompare(b.name));
+      ];
     }
 
-    // Main navigation
-    return [
-      ...(isAdmin ? [{ name: 'Admin', href: '/admin', icon: Shield }] : []),
+    // Main navigation, sorted alphabetically
+    const mainNav = [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-      { name: 'Stores', href: '/stores', icon: Store },
       { name: 'Products', href: '/products', icon: ShoppingBag },
+      { name: 'Stores', href: '/stores', icon: Store },
     ];
+
+    // Add admin option if user is admin (at the top)
+    if (isAdmin) {
+      mainNav.unshift({ name: 'Admin', href: '/admin', icon: Shield });
+    }
+
+    return mainNav;
   };
 
   const navigation = getNavigation();
@@ -42,15 +49,6 @@ export default function Sidebar() {
   return (
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen">
       <nav className="mt-8 space-y-1 px-4">
-        {storeId && (
-          <NavLink
-            to="/stores"
-            className="flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="mr-3 h-5 w-5" />
-            Back to Stores
-          </NavLink>
-        )}
         {navigation.map((item) => (
           <NavLink
             key={item.name}

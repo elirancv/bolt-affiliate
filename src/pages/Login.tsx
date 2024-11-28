@@ -18,17 +18,21 @@ export default function Login() {
     setError('');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
 
-      if (data.user) {
+      if (authData.user) {
+        const metadata = authData.user.user_metadata;
+        
         setUser({
-          id: data.user.id,
-          email: data.user.email!,
+          id: authData.user.id,
+          email: authData.user.email!,
+          first_name: metadata?.first_name || '',
+          last_name: metadata?.last_name || '',
           subscription_tier: 'free',
         });
         navigate('/');
