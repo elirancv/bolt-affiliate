@@ -2,17 +2,20 @@
 ALTER TABLE products ADD COLUMN IF NOT EXISTS clicks integer DEFAULT 0;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS last_clicked_at timestamp with time zone;
 
--- Create clicks history table
+-- Drop existing product_clicks table if it exists
+DROP TABLE IF EXISTS product_clicks;
+
+-- Create clicks history table with CASCADE delete
 CREATE TABLE IF NOT EXISTS product_clicks (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    product_id uuid REFERENCES products(id),
-    store_id uuid REFERENCES stores(id),
+    product_id uuid REFERENCES products(id) ON DELETE CASCADE,
+    store_id uuid REFERENCES stores(id) ON DELETE CASCADE,
     clicked_at timestamp with time zone DEFAULT now()
 );
 
 -- Grant permissions for authenticated users
 GRANT SELECT, INSERT ON product_clicks TO authenticated;
-GRANT SELECT, UPDATE ON products TO authenticated;
+GRANT SELECT, UPDATE, DELETE ON products TO authenticated;
 GRANT SELECT ON stores TO authenticated;
 GRANT INSERT, UPDATE ON analytics TO authenticated;
 
