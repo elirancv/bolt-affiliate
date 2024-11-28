@@ -196,7 +196,7 @@ export default function ProductList() {
             {filteredProducts.map((product) => (
               <div key={product.id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-all duration-200">
                 <Link 
-                  to={`/preview/${storeId}/products/${product.id}`}
+                  to={`/user/${storeId}/products/${product.id}`}
                   className="block"
                 >
                   <div className="aspect-w-1 aspect-h-1 relative">
@@ -340,7 +340,7 @@ export default function ProductList() {
                             </div>
                             <div className="ml-3 min-w-0">
                               <Link 
-                                to={`/preview/${storeId}/products/${product.id}`}
+                                to={`/user/${storeId}/products/${product.id}`}
                                 className="text-sm font-medium text-gray-900 hover:text-blue-600 block truncate"
                               >
                                 {product.title}

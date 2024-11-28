@@ -2,24 +2,28 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
-import { trackProductClick } from '../lib/api';
-import { Store, LayoutGrid, Users, MousePointerClick, TrendingUp, Clock, ShoppingBag, ChevronRight, ChevronDown, ExternalLink, Edit2 } from 'lucide-react';
-import type { Store as StoreType } from '../types';
+import { Store, LayoutGrid, Users, TrendingUp, ChevronDown, Menu } from 'lucide-react';
+import StatsCard from '../components/dashboard/StatsCard';
+import TimeRangeSelector from '../components/dashboard/TimeRangeSelector';
+import TopProducts from '../components/dashboard/TopProducts';
+import ProductFilter from '../components/dashboard/ProductFilter';
+import type { Product } from '../types';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
-  console.log('Dashboard user:', user);
   const navigate = useNavigate();
   const [storeCount, setStoreCount] = useState(0);
   const [productCount, setProductCount] = useState(0);
   const [visitorCount, setVisitorCount] = useState(0);
   const [totalClicks, setTotalClicks] = useState(0);
   const [conversionRate, setConversionRate] = useState(0);
-  const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState<any[]>([]);
   const [timeRange, setTimeRange] = useState('24h');
   const [showTimeMenu, setShowTimeMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [productFilter, setProductFilter] = useState('clicks_desc');
 
   useEffect(() => {
     if (!user) return;
@@ -40,7 +44,7 @@ export default function Dashboard() {
           const storeIds = stores.map(store => store.id);
           const normalizedStoreIds = storeIds.map(id => String(id));
 
-          // Calculate time filter first
+          // Calculate time filter
           let timeFilter;
           switch (timeRange) {
             case '7d':
@@ -86,19 +90,39 @@ export default function Dashboard() {
               stores: storesMap.get(data.product_store_id)
             }));
 
-            setTopProducts(productsWithData);
+            // Sort products based on filter
+            const sortedProducts = [...productsWithData].sort((a, b) => {
+              switch (productFilter) {
+                case 'clicks_desc':
+                  return (b.period_clicks || 0) - (a.period_clicks || 0);
+                case 'clicks_asc':
+                  return (a.period_clicks || 0) - (b.period_clicks || 0);
+                case 'price_desc':
+                  return (b.price || 0) - (a.price || 0);
+                case 'price_asc':
+                  return (a.price || 0) - (b.price || 0);
+                case 'name_asc':
+                  return a.name.localeCompare(b.name);
+                case 'name_desc':
+                  return b.name.localeCompare(a.name);
+                default:
+                  return (b.period_clicks || 0) - (a.period_clicks || 0);
+              }
+            });
+
+            setTopProducts(sortedProducts);
           } else {
             setTopProducts([]);
           }
 
-          // Get analytics data for the selected time range
+          // Get analytics data
           const { data: analytics } = await supabase
             .from('analytics')
             .select('*')
             .in('store_id', normalizedStoreIds)
             .gte('date', timeFilter.split('T')[0]);
 
-          // Calculate total visitors and clicks
+          // Calculate totals
           const totalVisitors = analytics?.reduce((sum, record) => sum + (record.unique_visitors || 0), 0) || 0;
           const clicks = analytics?.reduce((sum, record) => sum + (record.product_clicks || 0), 0) || 0;
           
@@ -122,383 +146,188 @@ export default function Dashboard() {
     };
 
     loadDashboardData();
-  }, [user, timeRange]);
-
-  useEffect(() => {
-    async function fetchStores() {
-      try {
-        let timeFilter;
-        switch (timeRange) {
-          case '7d':
-            timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            break;
-          case '30d':
-            timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-            break;
-          case 'all':
-            timeFilter = new Date(0).toISOString(); // Beginning of time
-            break;
-          default: // 24h
-            timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        }
-
-        const { data: storesData, error } = await supabase
-          .from('stores')
-          .select('*')
-          .gte('created_at', timeFilter)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setStores(storesData || []);
-      } catch (error) {
-        console.error('Error fetching stores:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchStores();
-  }, [timeRange]);
-
-  const handleProductClick = async (storeId: string, productId: string, url: string) => {
-    try {
-      // Track the click first
-      await trackProductClick(storeId, productId);
-      
-      // Update the local state
-      setTopProducts(prevProducts => 
-        prevProducts.map(product => 
-          product.id === productId 
-            ? { ...product, clicks: (product.clicks || 0) + 1 }
-            : product
-        ).sort((a, b) => (b.clicks || 0) - (a.clicks || 0))
-      );
-
-      // Open the product URL
-      window.open(url, '_blank');
-    } catch (error) {
-      console.error('Error tracking product click:', error);
-    }
-  };
-
-  const stats = [
-    { 
-      label: 'Active Stores', 
-      value: storeCount.toString(), 
-      icon: Store,
-      loading 
-    },
-    { 
-      label: 'Total Products', 
-      value: productCount.toString(), 
-      icon: LayoutGrid,
-      loading 
-    },
-    { 
-      label: 'Total Visitors', 
-      value: visitorCount.toString(), 
-      icon: Users,
-      loading 
-    },
-    { 
-      label: 'Total Clicks', 
-      value: totalClicks.toString(), 
-      icon: MousePointerClick,
-      loading 
-    },
-    { 
-      label: 'Conversion Rate', 
-      value: `${conversionRate.toFixed(1)}%`, 
-      icon: TrendingUp,
-      loading 
-    },
-  ];
+  }, [user, timeRange, productFilter]);
 
   return (
-    <div className="bg-gray-50">
-      <div className="max-w-[1600px] mx-auto px-4 pb-6 -mt-2 space-y-4 sm:space-y-6">
-        {/* Header Section */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="flex h-16 items-center justify-between px-4">
-            <div className="flex items-center gap-2">
-              <LayoutGrid className="h-6 w-6 text-blue-600" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 truncate">
-                  Welcome back, {user?.metadata?.first_name || user?.email}
-                </h1>
-                <p className="text-sm text-gray-600">Here's what's happening with your stores today.</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Navigation */}
+      <div className="lg:hidden">
+        <div className="fixed inset-0 flex z-40">
+          <div
+            className={`fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity duration-300 ease-in-out ${
+              isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          <div
+            className={`relative flex-1 flex flex-col max-w-xs w-full bg-white transform transition-transform duration-300 ease-in-out ${
+              isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+            <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
+              <div className="flex-shrink-0 flex items-center px-4">
+                <img
+                  className="h-8 w-auto"
+                  src="/logo.png"
+                  alt="Bolt Affiliate"
+                />
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => navigate('/products')}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors"
-              >
-                <ShoppingBag className="h-5 w-5" />
-                <span>View Products</span>
-              </button>
-              <button 
-                onClick={() => navigate('/stores/create')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 transition-colors"
-              >
-                <Store className="h-5 w-5" />
-                <span>Create Store</span>
-              </button>
+              <nav className="mt-5 px-2 space-y-1">
+                {/* Add mobile navigation items here */}
+              </nav>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Stats Overview Block */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-y sm:divide-y-0 divide-gray-100">
-            {stats.map((stat) => (
-              <div key={stat.label} className="p-4 sm:p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <stat.icon className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <p className="text-sm text-gray-600">{stat.label}</p>
-                </div>
-                {stat.loading ? (
-                  <div className="h-8 w-16 bg-gray-200 animate-pulse rounded" />
-                ) : (
-                  <p className="text-2xl font-semibold">{stat.value}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activity Section */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
+      {/* Main Content */}
+      <div className="lg:pl-0">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="py-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-600" />
-                <h2 className="text-base sm:text-lg font-semibold">Recent Activity</h2>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                  Dashboard
+                </h2>
               </div>
-              <div className="relative">
-                <button
-                  onClick={() => setShowTimeMenu(!showTimeMenu)}
-                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 focus:outline-none"
-                >
-                  <span>
-                    {timeRange === '24h' && 'Last 24 hours'}
-                    {timeRange === '7d' && 'Last 7 days'}
-                    {timeRange === '30d' && 'Last 30 days'}
-                    {timeRange === 'all' && 'All time'}
-                  </span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                
-                {showTimeMenu && (
-                  <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg z-10 py-1">
-                    <button
-                      onClick={() => {
-                        setTimeRange('24h');
-                        setShowTimeMenu(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Last 24 hours
-                    </button>
-                    <button
-                      onClick={() => {
-                        setTimeRange('7d');
-                        setShowTimeMenu(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Last 7 days
-                    </button>
-                    <button
-                      onClick={() => {
-                        setTimeRange('30d');
-                        setShowTimeMenu(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Last 30 days
-                    </button>
-                    <button
-                      onClick={() => {
-                        setTimeRange('all');
-                        setShowTimeMenu(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      All time
-                    </button>
-                  </div>
-                )}
+              <div className="flex md:ml-4">
+                <TimeRangeSelector
+                  timeRange={timeRange}
+                  showTimeMenu={showTimeMenu}
+                  onTimeRangeChange={setTimeRange}
+                  onToggleTimeMenu={() => setShowTimeMenu(!showTimeMenu)}
+                />
               </div>
             </div>
           </div>
-          <div className="p-4">
-            {loading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="animate-pulse flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="h-10 w-10 bg-gray-200 rounded-lg" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4" />
-                      <div className="h-3 bg-gray-200 rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : stores && stores.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {/* Stats Cards */}
-                <div className="bg-blue-50 p-3 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Users className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">Page Views</p>
-                      <p className="text-lg font-bold text-blue-900">{visitorCount}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <MousePointerClick className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-green-800">Total Clicks</p>
-                      <p className="text-lg font-bold text-green-900">{totalClicks}</p>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Recent Store Updates */}
-                {stores.slice(0, 2).map((store: any) => (
-                  <div 
-                    key={store.id} 
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-lg">
-                        <Store className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{store.name}</p>
-                        <p className="text-xs text-gray-500">Created {new Date(store.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <Store className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 mb-2">No activity yet</p>
-                <p className="text-sm text-gray-500 mb-3">Create your first store to get started</p>
-                <button
-                  onClick={() => navigate('/stores/create')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 transition-colors"
-                >
-                  <Store className="w-5 h-5" />
-                  Create Store
-                </button>
-              </div>
-            )}
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-5 xl:grid-cols-4">
+            <StatsCard
+              title="Total Stores"
+              value={storeCount}
+              icon={Store}
+              loading={loading}
+              trend={{
+                value: '+12%',
+                label: 'vs. last period',
+                positive: true
+              }}
+            />
+            <StatsCard
+              title="Total Products"
+              value={productCount}
+              icon={LayoutGrid}
+              loading={loading}
+              trend={{
+                value: '+5%',
+                label: 'vs. last period',
+                positive: true
+              }}
+            />
+            <StatsCard
+              title="Total Visitors"
+              value={visitorCount}
+              icon={Users}
+              loading={loading}
+              trend={{
+                value: '+18%',
+                label: 'vs. last period',
+                positive: true
+              }}
+            />
+            <StatsCard
+              title="Conversion Rate"
+              value={`${conversionRate.toFixed(1)}%`}
+              icon={TrendingUp}
+              description={`${totalClicks} clicks`}
+              loading={loading}
+              trend={{
+                value: '+2.5%',
+                label: 'vs. last period',
+                positive: true
+              }}
+            />
           </div>
-        </div>
 
-        {/* Top Performing Products Section */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
-              <h2 className="text-base sm:text-lg font-semibold">Top Performing Products</h2>
+          {/* Main 2-Column Grid */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mt-8">
+            {/* Top Products */}
+            <div className="bg-white rounded-lg shadow-sm xl:col-span-2">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-medium text-gray-900">Top Performing Products</h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Your best performing products based on click-through rate
+                    </p>
+                  </div>
+                  <ProductFilter
+                    currentFilter={productFilter}
+                    onFilterChange={setProductFilter}
+                  />
+                </div>
+              </div>
+              <div className="p-6">
+                <TopProducts products={topProducts} loading={loading} />
+              </div>
             </div>
-          </div>
-          <div className="p-4">
-            {loading ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="animate-pulse flex items-center space-x-4">
-                    <div className="h-12 w-12 bg-gray-200 rounded-lg" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4" />
-                      <div className="h-3 bg-gray-200 rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
+
+            {/* Recent Activity */}
+            <div className="bg-white rounded-lg shadow-sm">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Latest updates from your stores
+                </p>
               </div>
-            ) : topProducts.length > 0 ? (
-              <div className="space-y-4">
-                {topProducts.map((product: any) => (
-                  <div 
-                    key={product.id} 
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50"
-                  >
-                    <div 
-                      className="flex items-center gap-4 min-w-0 w-full max-w-4xl cursor-pointer"
-                      onClick={() => handleProductClick(
-                        product.store_id, 
-                        product.id,
-                        product.affiliate_url || product.product_url
-                      )}
-                    >
-                      {product.image_urls && product.image_urls.length > 0 ? (
-                        <img 
-                          src={product.image_urls[0]} 
-                          alt={product.name}
-                          className="w-12 h-12 shrink-0 rounded-lg object-cover bg-gray-100"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 shrink-0 flex items-center justify-center bg-blue-50 rounded-lg">
-                          <ShoppingBag className="h-6 w-6 text-blue-600" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0 pr-4">
-                        <div className="flex items-baseline gap-3">
-                          <h3 className="text-sm font-medium text-gray-900 truncate max-w-[500px]" title={product.name}>
-                            {product.name}
-                          </h3>
-                          <div className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap shrink-0">
-                            <MousePointerClick className="h-3 w-3" />
-                            <span>{product.period_clicks || 0} clicks</span>
+              <div className="flow-root p-6">
+                <ul role="list" className="-mb-8">
+                  {loading ? (
+                    <div className="animate-pulse space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex space-x-4">
+                          <div className="h-10 w-10 rounded-full bg-gray-200"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                           </div>
-                          <span className="text-xs text-green-600 whitespace-nowrap shrink-0">
-                            ${product.price}
-                          </span>
                         </div>
-                        <p className="text-xs text-gray-500 truncate mt-1">
-                          {product.stores?.name || 'Store name'}
-                        </p>
+                      ))}
+                    </div>
+                  ) : topProducts.slice(0, 5).map((product, idx) => (
+                    <li key={product.id}>
+                      <div className="relative pb-8">
+                        {idx < topProducts.length - 1 && (
+                          <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                        )}
+                        <div className="relative flex space-x-3">
+                          <div>
+                            <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                              <Menu className="h-4 w-4 text-white" aria-hidden="true" />
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div>
+                              <div className="text-sm">
+                                <a href="#" className="font-medium text-gray-900">
+                                  {product.name}
+                                </a>
+                              </div>
+                              <p className="mt-0.5 text-sm text-gray-500">
+                                {product.period_clicks} clicks • ${product.price}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-4">
-                      <button
-                        onClick={() => window.open(`/preview/${product.store_id}/products/${product.id}`, '_blank')}
-                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                        title="View Product"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => navigate(`/stores/${product.store_id}/products/${product.id}/edit`)}
-                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                        title="Edit Product"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ) : (
-              <div className="text-center py-6">
-                <ShoppingBag className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 mb-2">No products yet</p>
-                <p className="text-sm text-gray-500">Add products to your store to see performance metrics</p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

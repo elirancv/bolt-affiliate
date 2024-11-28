@@ -75,7 +75,7 @@ export function ProductCard({ product, storeId, onSave, isSaved, categoryName }:
   };
 
   const navigateToProduct = () => {
-    navigate(`/preview/${storeId}/products/${product.id}`);
+    navigate(`/user/${storeId}/products/${product.id}`);
   };
 
   const handleBuyNowClick = async (e: React.MouseEvent<HTMLAnchorElement> | React.TouchEvent<HTMLAnchorElement>) => {
