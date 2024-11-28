@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getStoreAnalytics } from '../../lib/analytics';
 import { Users, MousePointerClick, TrendingUp, DollarSign } from 'lucide-react';
-import { Card, CardContent } from '../ui/card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '../ui/skeleton';
 
 interface StoreMetricsProps {
