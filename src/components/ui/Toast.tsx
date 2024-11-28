@@ -15,6 +15,14 @@ interface ToastProps extends Toast {
 }
 
 export function Toast({ id, title, description, variant = 'default', onDismiss }: ToastProps) {
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      onDismiss(id);
+    }, 3000); // Auto dismiss after 3 seconds
+
+    return () => clearTimeout(timer);
+  }, [id, onDismiss]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50, scale: 0.3 }}
