@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ImageIcon, Upload, X, Plus } from 'lucide-react';
+import { ImageIcon, Upload, X, Plus, Trash2 } from 'lucide-react';
 import FormField from '../common/FormField';
 import CategorySelect from './CategorySelect';
+import ImageModal from '../common/ImageModal';
+import ImageSlider from '../common/ImageSlider';
 import { parseAffiliateUrl } from '../../lib/utils/affiliate-parser';
 import { scrapeProduct, isSupportedMarketplace } from '../../lib/utils/product-scraper';
 import toast from 'react-hot-toast';
@@ -32,10 +34,13 @@ interface ProductFormProps {
 }
 
 export default function ProductForm({ storeId, onSubmit, loading = false, error, initialData }: ProductFormProps) {
-  const [images, setImages] = useState<string[]>(initialData?.image_urls || ['']);
   const [isProcessing, setIsProcessing] = useState(false);
   const [marketplace, setMarketplace] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [isAddingImage, setIsAddingImage] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState('');
 
   const {
     register,
@@ -45,70 +50,62 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
     watch,
     setError,
     clearErrors,
+    reset,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
+      store_id: storeId,
       status: 'active',
-      ...initialData,
+      image_urls: initialData?.image_urls || [],
+      ...(initialData && {
+        ...initialData,
+        price: initialData.price?.toString(),
+        sale_price: initialData.sale_price?.toString(),
+      }),
     },
   });
 
   // Watch affiliate URL for changes
   const affiliateUrl = watch('affiliate_url');
 
+  // Watch image_urls for changes
+  const imageUrls = watch('image_urls');
+
   // Handle affiliate URL changes
   useEffect(() => {
-    if (!affiliateUrl) return;
+    if (!affiliateUrl || initialData) return; // Skip if editing an existing product
 
     const processUrl = async () => {
       try {
         setIsProcessing(true);
-        console.log('Processing URL:', affiliateUrl);
-        
         const { marketplace, originalUrl } = parseAffiliateUrl(affiliateUrl);
-        console.log('Parsed URL:', { marketplace, originalUrl });
         setMarketplace(marketplace || null);
 
         // Set the product URL regardless
         if (originalUrl) {
-          console.log('Setting product URL:', originalUrl);
           setValue('product_url', originalUrl, { shouldValidate: true });
           clearErrors('product_url');
 
           // Only attempt to scrape if it's a supported marketplace
           if (marketplace && isSupportedMarketplace(originalUrl)) {
-            console.log('Scraping product data...');
             const productData = await scrapeProduct(originalUrl, marketplace);
-            console.log('Scraped product data:', productData);
 
-            // Populate form with scraped data if available
+            // Populate form with scraped data if available, but not images
             if (productData.name) {
-              console.log('Setting name:', productData.name);
               setValue('name', productData.name, { shouldValidate: true });
             }
             if (productData.description) {
-              console.log('Setting description:', productData.description);
               setValue('description', productData.description, { shouldValidate: true });
             }
             if (productData.price) {
-              console.log('Setting price:', productData.price);
               setValue('price', productData.price, { shouldValidate: true });
             }
             if (productData.sale_price) {
-              console.log('Setting sale price:', productData.sale_price);
               setValue('sale_price', productData.sale_price, { shouldValidate: true });
             }
-            if (productData.image_urls?.length) {
-              console.log('Setting images:', productData.image_urls);
-              setImages(productData.image_urls);
-              setValue('image_urls', productData.image_urls, { shouldValidate: true });
-            }
+            
             toast.success('Product details loaded successfully');
-          } else {
-            console.log('Not a supported marketplace or no original URL');
           }
-        } else {
-          console.log('No original URL found');
         }
       } catch (err) {
         console.error('Error processing affiliate URL:', err);
@@ -119,9 +116,11 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
     };
 
     processUrl();
-  }, [affiliateUrl]);
+  }, [affiliateUrl, initialData]);
 
   const handleAffiliateUrlChange = async (url: string) => {
+    if (initialData) return; // Skip if editing an existing product
+    
     setIsLoading(true);
     try {
       const { marketplace, originalUrl } = parseAffiliateUrl(url);
@@ -139,8 +138,11 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
       if (productDetails.price) setValue('price', productDetails.price.toString());
       if (productDetails.sale_price) setValue('sale_price', productDetails.sale_price.toString());
       if (productDetails.images?.length) {
-        setImages(productDetails.images);
-        setValue('image_urls', productDetails.images);
+        // Only set images if there are no existing images during initial load
+        const currentImages = watch('image_urls') || [];
+        if (currentImages.length === 0) {
+          setValue('image_urls', productDetails.images);
+        }
       }
       
       toast.success('Product details loaded successfully');
@@ -153,225 +155,335 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
   };
 
   const handleImageChange = (index: number, url: string) => {
-    const newImages = [...images];
+    const newImages = [...(imageUrls || [])];
     newImages[index] = url;
-    setImages(newImages);
-    setValue('image_urls', newImages.filter(Boolean));
+    setValue('image_urls', newImages, { shouldValidate: true });
   };
 
-  const addImageField = () => {
-    setImages([...images, '']);
+  // Handle add image
+  const handleAddImage = () => {
+    if (newImageUrl) {
+      const updatedImages = [...(imageUrls || []), newImageUrl];
+      setValue('image_urls', updatedImages, { shouldValidate: true });
+      setNewImageUrl('');
+      setIsAddingImage(false);
+    }
   };
 
-  const removeImageField = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index);
-    setImages(newImages);
-    setValue('image_urls', newImages.filter(Boolean));
+  // Handle remove image
+  const handleRemoveImage = (index: number) => {
+    const updatedImages = imageUrls.filter((_, i) => i !== index);
+    setValue('image_urls', updatedImages, { shouldValidate: true });
+    if (currentImageIndex >= updatedImages.length) {
+      setCurrentImageIndex(Math.max(0, updatedImages.length - 1));
+    }
   };
 
   const handleFormSubmit = async (data: ProductFormData) => {
     try {
-      await onSubmit({
+      // Filter out any empty image URLs
+      const filteredImageUrls = imageUrls.filter(Boolean);
+      
+      // Update the data with filtered image URLs
+      const updatedData = {
         ...data,
-        image_urls: images.filter(Boolean),
-      });
+        image_urls: filteredImageUrls,
+        price: data.price ? parseFloat(data.price) : null,
+        sale_price: data.sale_price ? parseFloat(data.sale_price) : null,
+      };
+
+      await onSubmit(updatedData);
     } catch (err) {
       console.error('Error submitting form:', err);
     }
   };
 
+  const handleSyncWithAmazon = async () => {
+    const currentAffiliateUrl = watch('affiliate_url');
+    if (!currentAffiliateUrl) {
+      toast.error('No affiliate URL found');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const { marketplace, originalUrl } = parseAffiliateUrl(currentAffiliateUrl);
+      
+      if (!marketplace || !originalUrl || !isSupportedMarketplace(originalUrl)) {
+        toast.error('Invalid or unsupported marketplace URL');
+        return;
+      }
+
+      const productData = await scrapeProduct(originalUrl, marketplace);
+      
+      // Update form with scraped data
+      if (productData.name) {
+        setValue('name', productData.name, { shouldValidate: true });
+      }
+      if (productData.description) {
+        setValue('description', productData.description, { shouldValidate: true });
+      }
+      if (productData.price) {
+        setValue('price', productData.price, { shouldValidate: true });
+      }
+      if (productData.sale_price) {
+        setValue('sale_price', productData.sale_price, { shouldValidate: true });
+      }
+      // Always update images during manual sync
+      if (productData.image_urls?.length) {
+        setValue('image_urls', productData.image_urls, { shouldValidate: true });
+      }
+      
+      toast.success('Product details updated from Amazon');
+    } catch (error) {
+      console.error('Error syncing with Amazon:', error);
+      toast.error('Failed to sync with Amazon');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-          {error}
-        </div>
-      )}
-
-      {/* Quick Input Section */}
-      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-        <h3 className="text-lg font-medium text-blue-900 mb-2">Quick Add Product</h3>
-        <div className="space-y-4">
-          <FormField
-            label="Affiliate URL"
-            error={errors.affiliate_url?.message}
-            description={
-              isProcessing
-                ? "Processing URL..."
-                : marketplace
-                  ? `Detected marketplace: ${marketplace}`
-                  : "Paste your affiliate link from Amazon, AliExpress, etc."
-            }
-          >
-            <div className="relative">
-              <input
-                {...register('affiliate_url')}
-                type="url"
-                placeholder="https://example.com/product?affiliate=your-id"
-                className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {isProcessing && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-                </div>
-              )}
-              {isLoading && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-                </div>
-              )}
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="max-w-5xl mx-auto">
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg shadow-sm">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm">{error}</p>
+              </div>
             </div>
-          </FormField>
-        </div>
-      </div>
+          </div>
+        )}
 
-      <FormField
-        label="Product Name"
-        error={errors.name?.message}
-      >
-        <input
-          {...register('name')}
-          type="text"
-          placeholder="Enter product name"
-          className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </FormField>
-
-      <CategorySelect
-        storeId={storeId}
-        value={watch('category_id') || ''}
-        onChange={(value) => setValue('category_id', value)}
-        error={errors.category_id?.message}
-      />
-
-      <FormField
-        label="Description"
-        error={errors.description?.message}
-      >
-        <textarea
-          {...register('description')}
-          placeholder="Enter product description"
-          rows={4}
-          className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </FormField>
-
-      <div className="grid grid-cols-2 gap-6">
-        <FormField
-          label="Price"
-          error={errors.price?.message}
-        >
-          <input
-            {...register('price', { valueAsNumber: true })}
-            type="number"
-            step="0.01"
-            placeholder="Enter price"
-            className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </FormField>
-
-        <FormField
-          label="Sale Price (Optional)"
-          error={errors.sale_price?.message}
-        >
-          <input
-            {...register('sale_price', { valueAsNumber: true })}
-            type="number"
-            step="0.01"
-            placeholder="Enter sale price"
-            className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </FormField>
-      </div>
-
-      <FormField
-        label="Product URL (Original product page URL)"
-        error={errors.product_url?.message}
-        description="The URL of the original product page"
-      >
-        <input
-          {...register('product_url')}
-          type="url"
-          placeholder="https://example.com/product"
-          className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </FormField>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Product Images</h3>
-          <button
-            type="button"
-            onClick={addImageField}
-            className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Image
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {images.map((url, index) => (
-            <div key={index} className="relative">
-              <div className="aspect-square bg-gray-50 rounded-lg p-4 mb-2">
-                {url ? (
-                  <img
-                    src={url}
-                    alt={`Product ${index + 1}`}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-gray-300" />
-                  </div>
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h2 className="text-2xl font-semibold text-white">
+                  Product Details
+                </h2>
+                {initialData && (
+                  <span className="px-3 py-1 bg-blue-400/20 text-white text-sm rounded-full">
+                    Editing
+                  </span>
                 )}
               </div>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => handleImageChange(index, e.target.value)}
-                  placeholder="Enter image URL"
-                  className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm"
-                />
-                {index > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => removeImageField(index)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+              {initialData && (
+                <button
+                  type="button"
+                  onClick={handleSyncWithAmazon}
+                  disabled={isProcessing}
+                  className="inline-flex items-center px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors backdrop-blur-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {isProcessing ? 'Syncing...' : 'Sync with Amazon'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="p-8">
+            <div className="space-y-8">
+              {/* Basic Info Section */}
+              <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-medium text-gray-900 mb-6">Basic Information</h3>
+                <div className="space-y-6">
+                  {/* Affiliate URL */}
+                  <FormField
+                    label="Affiliate URL"
+                    error={errors.affiliate_url?.message}
+                    description={
+                      isProcessing
+                        ? "Processing URL..."
+                        : marketplace
+                          ? `Detected marketplace: ${marketplace}`
+                          : "Paste your affiliate link from Amazon, AliExpress, etc."
+                    }
                   >
-                    <X className="h-5 w-5" />
-                  </button>
-                )}
+                    <div className="relative">
+                      <input
+                        {...register('affiliate_url')}
+                        type="url"
+                        placeholder="https://example.com/product?affiliate=your-id"
+                        className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                      />
+                      {isProcessing && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                        </div>
+                      )}
+                    </div>
+                  </FormField>
+
+                  {/* Product Name */}
+                  <FormField label="Product Name" error={errors.name?.message}>
+                    <input
+                      type="text"
+                      {...register('name')}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                      placeholder="Enter product name"
+                    />
+                  </FormField>
+
+                  {/* Description */}
+                  <FormField label="Description" error={errors.description?.message}>
+                    <textarea
+                      {...register('description')}
+                      rows={4}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                      placeholder="Enter product description"
+                    />
+                  </FormField>
+                </div>
+              </div>
+
+              {/* Pricing & Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Pricing Section */}
+                <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-medium text-gray-900 mb-6">Pricing</h3>
+                  <div className="space-y-4">
+                    <FormField label="Price" error={errors.price?.message}>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 sm:text-sm">$</span>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          {...register('price', { valueAsNumber: true })}
+                          className="w-full pl-7 pr-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Sale Price" error={errors.sale_price?.message}>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 sm:text-sm">$</span>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          {...register('sale_price', { valueAsNumber: true })}
+                          className="w-full pl-7 pr-4 py-3 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+                  </div>
+                </div>
+
+                {/* Product Details Section */}
+                <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-medium text-gray-900 mb-6">Product Details</h3>
+                  <div className="space-y-4">
+                    <FormField label="Product URL" error={errors.product_url?.message}>
+                      <input
+                        type="url"
+                        {...register('product_url')}
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
+                        placeholder="https://"
+                      />
+                    </FormField>
+
+                    <FormField label="Category" error={errors.category_id?.message} description="Select a category for your product">
+                      <CategorySelect
+                        storeId={storeId}
+                        value={watch('category_id')}
+                        onChange={(value) => setValue('category_id', value, { shouldValidate: true })}
+                      />
+                    </FormField>
+
+                    <FormField label="Status" error={errors.status?.message}>
+                      <select
+                        {...register('status')}
+                        className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      >
+                        <option value="active" className="text-green-700 bg-green-50">Active</option>
+                        <option value="inactive" className="text-yellow-700 bg-yellow-50">Inactive</option>
+                        <option value="out_of_stock" className="text-red-700 bg-red-50">Out of Stock</option>
+                      </select>
+                    </FormField>
+                  </div>
+                </div>
+              </div>
+
+              {/* Images Section */}
+              <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-medium text-gray-900 mb-6">Product Images</h3>
+                <div className="space-y-4">
+                  <ImageSlider
+                    images={imageUrls || []}
+                    onImageClick={(index) => setCurrentImageIndex(index)}
+                    onRemoveImage={handleRemoveImage}
+                    onAddImage={() => setIsAddingImage(true)}
+                  />
+                  {/* New Image URL Input */}
+                  {isAddingImage && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={newImageUrl}
+                          onChange={(e) => setNewImageUrl(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter image URL"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddImage}
+                        className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewImageUrl('');
+                          setIsAddingImage(false);
+                        }}
+                        className="px-3 py-2 text-gray-600 hover:text-gray-800 rounded-lg text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          ))}
+
+            {/* Form Actions */}
+            <div className="mt-8 flex justify-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all shadow-sm hover:shadow-md"
+              >
+                {loading ? 'Saving...' : 'Save Product'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <FormField
-        label="Status"
-        error={errors.status?.message}
-      >
-        <select
-          {...register('status')}
-          className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="out_of_stock">Out of Stock</option>
-        </select>
-      </FormField>
-
-      <div className="flex justify-end space-x-4">
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Saving...' : 'Save Product'}
-        </button>
-      </div>
-    </form>
+      </form>
+      {/* Image Modal */}
+      {selectedImage && (
+        <ImageModal
+          imageUrl={selectedImage}
+          onClose={() => setSelectedImage(null)}
+        />
+      )}
+    </div>
   );
 }

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { getCategories } from '../../lib/api';
-import FormField from '../common/FormField';
 
 interface Category {
   id: string;
@@ -34,26 +33,20 @@ export default function CategorySelect({ storeId, value, onChange, error }: Cate
   }, [storeId]);
 
   return (
-    <FormField
-      label="Category"
-      error={error}
-      description="Select a category for your product"
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
+        loading ? 'bg-gray-50' : ''
+      }`}
+      disabled={loading}
     >
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-          loading ? 'bg-gray-50' : ''
-        }`}
-        disabled={loading}
-      >
-        <option value="">Select a category</option>
-        {categories.map((category) => (
-          <option key={category.id} value={category.id}>
-            {category.name}
-          </option>
-        ))}
-      </select>
-    </FormField>
+      <option value="">Select a category</option>
+      {categories.map((category) => (
+        <option key={category.id} value={category.id}>
+          {category.name}
+        </option>
+      ))}
+    </select>
   );
 }

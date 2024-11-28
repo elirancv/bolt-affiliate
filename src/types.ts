@@ -43,7 +43,7 @@ export interface Product {
   sale_price?: number;
   product_url: string;
   affiliate_url?: string;
-  image_url?: string;
+  image_urls?: string[];
   status: 'active' | 'inactive' | 'out_of_stock';
   metadata?: Record<string, any>;
   created_at: string;
