@@ -179,6 +179,11 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
     }
   };
 
+  // Handle reorder images
+  const handleReorderImages = (reorderedImages: string[]) => {
+    setValue('image_urls', reorderedImages, { shouldValidate: true });
+  };
+
   const handleFormSubmit = async (data: ProductFormData) => {
     try {
       // Filter out any empty image URLs
@@ -428,6 +433,7 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
                     onImageClick={(index) => setCurrentImageIndex(index)}
                     onRemoveImage={handleRemoveImage}
                     onAddImage={() => setIsAddingImage(true)}
+                    onReorderImages={handleReorderImages}
                   />
                   {/* New Image URL Input */}
                   {isAddingImage && (
