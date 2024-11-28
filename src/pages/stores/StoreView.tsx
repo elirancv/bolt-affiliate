@@ -108,22 +108,10 @@ export default function StoreView() {
 
       {/* Store Header */}
       <header className="bg-white border-b sticky top-0 z-10">
-        {showSocialLinksInHeader && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-            <div className="flex justify-end">
-              <SocialLinks 
-                links={store.social_links} 
-                className="justify-end"
-                variant="dark" 
-              />
-            </div>
-          </div>
-        )}
-
         {/* Main header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {store.logo_url ? (
                   <img 
@@ -139,28 +127,26 @@ export default function StoreView() {
                 <div>
                   <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{store.name}</h1>
                   {store.description && (
-                    <p className="text-sm text-gray-600 max-w-2xl mt-0.5">{store.description}</p>
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{store.description}</p>
                   )}
                 </div>
               </div>
-
-              <div className="hidden sm:flex items-center space-x-4">
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span className="flex items-center">
-                    <span className="mr-2">⭐</span>
-                    {products.length} Products
-                  </span>
-                  <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                  <span className="flex items-center">
-                    <span className="mr-2">🏷️</span>
-                    {uniqueCategories.length} Categories
-                  </span>
+              
+              {/* Social Links in Header */}
+              {showSocialLinksInHeader && (
+                <div className="flex items-center">
+                  <div className="h-8 w-px bg-gray-200 mx-4"></div>
+                  <SocialLinks 
+                    links={store.social_links} 
+                    className="flex items-center gap-4"
+                    variant="dark" 
+                  />
                 </div>
-              </div>
+              )}
             </div>
-
-            {/* Search and filters bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            
+            {/* Search and Categories */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1 max-w-xl">
                 <SearchBar
                   onSearch={setSearchQuery}

@@ -13,9 +13,9 @@ import {
   Save,
   Facebook,
   Instagram,
-  MessageCircle,
-  Send,
-  Globe,
+  Phone,
+  MapPin,
+  MessagesSquare,
   AlertCircle,
 } from 'lucide-react';
 
@@ -23,32 +23,32 @@ const SOCIAL_PLATFORMS = [
   {
     key: 'facebook',
     label: 'Facebook',
-    placeholder: 'https://facebook.com/your-page',
+    placeholder: 'https://fb.me/your-page',
     icon: Facebook,
+  },
+  {
+    key: 'messenger',
+    label: 'Facebook Messenger',
+    placeholder: 'https://m.me/your-id',
+    icon: MessagesSquare,
   },
   {
     key: 'instagram',
     label: 'Instagram',
-    placeholder: 'https://instagram.com/@your-handle',
+    placeholder: 'https://instagram.com/your-handle',
     icon: Instagram,
   },
   {
     key: 'whatsapp',
     label: 'WhatsApp',
     placeholder: 'https://wa.me/your-number',
-    icon: MessageCircle,
+    icon: Phone,
   },
   {
-    key: 'telegram',
-    label: 'Telegram',
-    placeholder: 'https://t.me/your-username',
-    icon: Send,
-  },
-  {
-    key: 'website',
-    label: 'Website',
-    placeholder: 'https://your-website.com',
-    icon: Globe,
+    key: 'google_maps',
+    label: 'Google Maps',
+    placeholder: 'https://maps.app.goo.gl/your-location',
+    icon: MapPin,
   },
 ];
 

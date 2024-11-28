@@ -1,40 +1,62 @@
 import React from 'react';
 import { 
   Facebook, 
-  Instagram, 
-  Twitter, 
-  Linkedin, 
-  Youtube, 
+  Instagram,
   MessageCircle,
-  Camera,
-  CircleUserRound,
-  MessageSquare,
+  MapPin,
   Phone,
-  Send,
   MessagesSquare,
-  Building2
 } from 'lucide-react';
 import type { SocialLinks as SocialLinksType } from '../../types';
 
 interface SocialLinksProps {
   links: SocialLinksType;
   className?: string;
+  variant?: 'light' | 'dark';
 }
 
 const SOCIAL_PLATFORMS = [
-  { key: 'facebook', icon: Facebook, color: '#1877F2', label: 'Facebook' },
-  { key: 'facebook_messenger', icon: MessagesSquare, color: '#00B2FF', label: 'Facebook Messenger' },
-  { key: 'instagram', icon: Instagram, color: '#E4405F', label: 'Instagram' },
-  { key: 'twitter', icon: Twitter, color: '#1DA1F2', label: 'Twitter (X)' },
-  { key: 'linkedin', icon: Linkedin, color: '#0A66C2', label: 'LinkedIn' },
-  { key: 'youtube', icon: Youtube, color: '#FF0000', label: 'YouTube' },
-  { key: 'tiktok', icon: MessageCircle, color: '#000000', label: 'TikTok' },
-  { key: 'snapchat', icon: Camera, color: '#FFFC00', label: 'Snapchat' },
-  { key: 'pinterest', icon: CircleUserRound, color: '#E60023', label: 'Pinterest' },
-  { key: 'discord', icon: MessageSquare, color: '#5865F2', label: 'Discord' },
-  { key: 'whatsapp', icon: Phone, color: '#25D366', label: 'WhatsApp' },
-  { key: 'telegram', icon: Send, color: '#0088cc', label: 'Telegram' },
-  { key: 'google_business', icon: Building2, color: '#4285F4', label: 'Google Business' },
+  { 
+    key: 'facebook', 
+    icon: Facebook, 
+    color: '#1877F2', 
+    label: 'Facebook',
+    formatUrl: (url: string) => url
+  },
+  { 
+    key: 'messenger', 
+    icon: MessagesSquare, 
+    color: '#00B2FF', 
+    label: 'Facebook Messenger',
+    formatUrl: (url: string) => url
+  },
+  { 
+    key: 'instagram', 
+    icon: Instagram, 
+    color: '#E4405F', 
+    label: 'Instagram',
+    formatUrl: (url: string) => url
+  },
+  { 
+    key: 'whatsapp', 
+    icon: Phone, 
+    color: '#25D366', 
+    label: 'WhatsApp',
+    formatUrl: (url: string) => {
+      // If it's already a wa.me link, return as is
+      if (url.includes('wa.me')) return url;
+      // Otherwise, format the phone number into a wa.me link
+      const phone = url.replace(/\D/g, '');
+      return `https://wa.me/${phone}`;
+    }
+  },
+  { 
+    key: 'google_maps', 
+    icon: MapPin, 
+    color: '#4285F4', 
+    label: 'Google Maps',
+    formatUrl: (url: string) => url
+  },
 ] as const;
 
 export default function SocialLinks({ links, className = '' }: SocialLinksProps) {
@@ -44,35 +66,26 @@ export default function SocialLinks({ links, className = '' }: SocialLinksProps)
 
   return (
     <div className={`flex flex-wrap items-center gap-4 ${className}`}>
-      {SOCIAL_PLATFORMS.map(({ key, icon: Icon, color, label }) => {
+      {SOCIAL_PLATFORMS.map(({ key, icon: Icon, label, formatUrl }) => {
         const link = links[key as keyof SocialLinksType];
         if (!link) return null;
+
+        const formattedLink = formatUrl(link);
 
         return (
           <a
             key={key}
-            href={link}
+            href={formattedLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-400 transition-colors social-link"
+            className="text-gray-400 hover:text-gray-900 transition-colors duration-200 flex items-center gap-2"
             aria-label={label}
             title={label}
-            style={{ 
-              '--social-hover-color': color
-            } as React.CSSProperties}
           >
-            <Icon className="h-6 w-6" />
+            <Icon className="h-5 w-5" />
           </a>
         );
       })}
     </div>
   );
 }
-
-const style = document.createElement('style');
-style.textContent = `
-  .social-link:hover {
-    color: var(--social-hover-color) !important;
-  }
-`;
-document.head.appendChild(style);

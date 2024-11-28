@@ -29,36 +29,38 @@ export async function createStore(store: Omit<Store, 'id' | 'created_at' | 'upda
 
 export async function getStores(userId: string) {
   try {
+    // Get all stores with their products count
     const { data: stores, error: storesError } = await supabase
       .from('stores')
-      .select('*')
+      .select(`
+        *,
+        products:products(count)
+      `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (storesError) throw storesError;
 
-    // Get metrics for all stores
-    const { data: metrics, error: metricsError } = await supabase
-      .from('store_metrics')
-      .select('*');
+    // Get analytics data for all stores
+    const { data: analytics, error: analyticsError } = await supabase
+      .from('analytics')
+      .select('*')
+      .in('store_id', stores?.map(store => store.id) || [])
+      .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
-    if (metricsError) throw metricsError;
+    if (analyticsError) throw analyticsError;
 
     // Combine store data with metrics
     const storesWithMetrics = stores.map(store => {
-      const storeMetrics = metrics?.find(m => m.store_id === store.id) || {
-        product_count: 0,
-        click_count: 0,
-        total_commission: 0,
-        approved_commissions: 0
-      };
+      const storeAnalytics = analytics?.filter(a => a.store_id === store.id) || [];
+      const totalClicks = storeAnalytics.reduce((sum, record) => sum + (record.product_clicks || 0), 0);
 
       return {
         ...store,
-        productsCount: storeMetrics.product_count,
-        totalClicks: storeMetrics.click_count,
-        totalCommission: storeMetrics.total_commission,
-        approvedCommissions: storeMetrics.approved_commissions,
+        productsCount: store.products[0].count,
+        totalClicks,
+        totalCommission: 0, // This will be implemented later
+        approvedCommissions: 0, // This will be implemented later
         lastUpdated: store.updated_at
       };
     });

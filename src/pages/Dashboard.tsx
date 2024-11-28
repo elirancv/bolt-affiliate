@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
-import { Store, LayoutGrid, Users } from 'lucide-react';
+import { Store, LayoutGrid, Users, MousePointerClick, TrendingUp } from 'lucide-react';
 import type { Store as StoreType } from '../types';
 
 export default function Dashboard() {
@@ -11,6 +11,9 @@ export default function Dashboard() {
   const [storeCount, setStoreCount] = useState(0);
   const [productCount, setProductCount] = useState(0);
   const [visitorCount, setVisitorCount] = useState(0);
+  const [totalClicks, setTotalClicks] = useState(0);
+  const [conversionRate, setConversionRate] = useState(0);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,14 +39,42 @@ export default function Dashboard() {
 
           setProductCount(productsCount || 0);
 
-          // Get total visitors count across all stores
+          // Get analytics data for the last 30 days
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
           const { data: analytics } = await supabase
             .from('analytics')
-            .select('unique_visitors')
-            .in('store_id', storeIds);
+            .select('*')
+            .in('store_id', storeIds)
+            .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
 
+          // Calculate total visitors and clicks
           const totalVisitors = analytics?.reduce((sum, record) => sum + (record.unique_visitors || 0), 0) || 0;
+          const clicks = analytics?.reduce((sum, record) => sum + (record.product_clicks || 0), 0) || 0;
+          
           setVisitorCount(totalVisitors);
+          setTotalClicks(clicks);
+          setConversionRate(totalVisitors > 0 ? (clicks / totalVisitors * 100) : 0);
+
+          // Get top performing products
+          const { data: topProductsData } = await supabase
+            .from('products')
+            .select(`
+              id,
+              name,
+              price,
+              clicks,
+              store_id,
+              stores (
+                name
+              )
+            `)
+            .in('store_id', storeIds)
+            .order('clicks', { ascending: false })
+            .limit(5);
+
+          setTopProducts(topProductsData || []);
         }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -72,6 +103,18 @@ export default function Dashboard() {
       label: 'Total Visitors', 
       value: visitorCount.toString(), 
       icon: Users,
+      loading 
+    },
+    { 
+      label: 'Total Clicks', 
+      value: totalClicks.toString(), 
+      icon: MousePointerClick,
+      loading 
+    },
+    { 
+      label: 'Conversion Rate', 
+      value: `${conversionRate.toFixed(1)}%`, 
+      icon: TrendingUp,
       loading 
     },
   ];
@@ -110,6 +153,35 @@ export default function Dashboard() {
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
         <p className="text-gray-600">No recent activity to show.</p>
+      </div>
+
+      {/* Top Products Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+        <h2 className="text-lg font-semibold mb-4">Top Performing Products</h2>
+        {loading ? (
+          <div className="animate-pulse space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 rounded" />
+            ))}
+          </div>
+        ) : topProducts.length === 0 ? (
+          <p className="text-gray-600">No product data available.</p>
+        ) : (
+          <div className="space-y-4">
+            {topProducts.map((product) => (
+              <div key={product.id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg">
+                <div>
+                  <h3 className="font-medium text-gray-900">{product.name}</h3>
+                  <p className="text-sm text-gray-500">Store: {product.stores.name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{product.clicks} clicks</p>
+                  <p className="text-sm text-gray-500">${product.price}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

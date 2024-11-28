@@ -16,18 +16,22 @@ export async function trackProductClick(storeId: string, productId: string) {
 
     if (analyticsError) throw analyticsError;
 
-    // Update store metrics
-    const { error: metricsError } = await supabase.rpc(
-      'refresh_store_metrics',
-      { store_id: storeId }
-    );
+    // Record the click with source information
+    const { error: clickError } = await supabase
+      .from('clicks')
+      .insert({
+        store_id: storeId,
+        product_id: productId,
+        source: window.location.hostname,
+        referrer: document.referrer
+      });
 
-    if (metricsError) throw metricsError;
+    if (clickError) throw clickError;
 
     return true;
   } catch (error) {
     console.error('Error tracking product click:', error);
-    throw error;
+    return false;
   }
 }
 
@@ -46,64 +50,36 @@ export async function trackPageView(storeId: string) {
 
     if (analyticsError) throw analyticsError;
 
-    // Update store metrics
-    const { error: metricsError } = await supabase.rpc(
-      'refresh_store_metrics',
-      { store_id: storeId }
-    );
+    // Record the view with source information
+    const { error: clickError } = await supabase
+      .from('clicks')
+      .insert({
+        store_id: storeId,
+        source: window.location.hostname,
+        referrer: document.referrer
+      });
 
-    if (metricsError) throw metricsError;
+    if (clickError) throw clickError;
 
     return true;
   } catch (error) {
     console.error('Error tracking page view:', error);
-    // Don't throw the error to prevent breaking navigation
     return false;
   }
 }
 
-export async function getStoreAnalytics(storeId: string, days: number = 30) {
+export async function getStoreAnalytics(storeId: string) {
   try {
     const { data, error } = await supabase
-      .from('analytics')
+      .from('store_metrics')
       .select('*')
       .eq('store_id', storeId)
-      .order('date', { ascending: false })
-      .limit(days);
+      .single();
 
     if (error) throw error;
-    return data || [];
+    return data;
   } catch (error) {
-    console.error('Error fetching analytics:', error);
-    throw error;
-  }
-}
-
-export async function getTopProducts(storeId: string) {
-  try {
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('*')
-      .eq('store_id', storeId);
-
-    if (productsError) throw productsError;
-
-    const { data: analytics, error: analyticsError } = await supabase
-      .from('analytics')
-      .select('product_clicks')
-      .eq('store_id', storeId);
-
-    if (analyticsError) throw analyticsError;
-
-    const totalClicks = analytics?.reduce((sum, record) => 
-      sum + (record.product_clicks || 0), 0) || 0;
-
-    return (products || []).map(product => ({
-      ...product,
-      clicks: totalClicks
-    }));
-  } catch (error) {
-    console.error('Error fetching top products:', error);
-    throw error;
+    console.error('Error getting store analytics:', error);
+    return null;
   }
 }

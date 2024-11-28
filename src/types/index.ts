@@ -24,8 +24,10 @@ export interface PayoutInfo {
 
 export interface SocialLinks {
   facebook?: string;
-  facebook_messenger?: string;
+  messenger?: string;
   instagram?: string;
+  whatsapp?: string;
+  google_maps?: string;
   twitter?: string;
   linkedin?: string;
   youtube?: string;
@@ -33,7 +35,6 @@ export interface SocialLinks {
   snapchat?: string;
   pinterest?: string;
   discord?: string;
-  whatsapp?: string;
   telegram?: string;
   google_business?: string;
 }
