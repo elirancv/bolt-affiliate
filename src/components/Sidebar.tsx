@@ -1,16 +1,20 @@
-import React from 'react';
-import { NavLink, useLocation, useParams } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Store, 
-  ShoppingBag, 
-  FileText, 
+import { NavLink } from 'react-router-dom';
+import {
+  Store,
+  LayoutDashboard,
+  ShoppingBag,
   Settings,
-  BarChart,
   Shield,
-  ArrowLeft
+  FileText,
+  BarChart,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/Tooltip';
+import { cn } from '../lib/utils';
+import { motion } from 'framer-motion';
+import React from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 
 export default function Sidebar() {
   const { isAdmin } = useAdmin();
@@ -47,25 +51,38 @@ export default function Sidebar() {
   const navigation = getNavigation();
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 min-h-screen">
-      <nav className="mt-8 space-y-1 px-4">
-        {navigation.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.href}
-            className={({ isActive }) =>
-              `flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                isActive
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`
-            }
-          >
-            <item.icon className="mr-3 h-5 w-5" />
-            {item.name}
-          </NavLink>
-        ))}
+    <aside className="w-56 bg-white border-r border-gray-100 min-h-screen flex flex-col">
+      {/* Navigation */}
+      <nav className="flex-1 py-5 px-2">
+        <div className="space-y-1">
+          {navigation.map((item) => (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              className={({ isActive }) =>
+                `group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                }`
+              }
+            >
+              <item.icon className="flex-shrink-0 w-5 h-5 mr-3 transition-colors" />
+              <span className="truncate">{item.name}</span>
+            </NavLink>
+          ))}
+        </div>
       </nav>
-    </div>
+
+      {/* Footer */}
+      <div className="mt-auto border-t border-gray-100">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <Settings className="h-4 w-4" />
+            <span>v1.0.0</span>
+          </div>
+        </div>
+      </div>
+    </aside>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User, Store } from 'lucide-react';
 
 export default function Navbar() {
   const { user, signOut } = useAuthStore();
@@ -14,12 +14,40 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <div className="flex items-center gap-2">
-              <img src="/logo.svg" alt="Linkxstore Logo" className="h-8 w-8" />
-              <span className="text-xl font-bold text-blue-600">{import.meta.env.VITE_APP_NAME}</span>
+            <div className="flex items-center group cursor-pointer -ml-3">
+              {/* Icon Container */}
+              <div className="relative flex-shrink-0">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-11 w-11 bg-blue-500/20 rounded-full blur-lg group-hover:bg-blue-500/30 transition-all duration-300" />
+                <div className="relative p-1.5">
+                  <Store className="h-9 w-9 text-blue-600 transform group-hover:-rotate-12 transition-all duration-300" />
+                </div>
+              </div>
+
+              {/* Text Container */}
+              <div className="ml-3 flex flex-col -space-y-1">
+                <div className="relative">
+                  <div className="absolute -inset-2.5 bg-blue-500/10 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                  <span className="relative text-lg font-semibold bg-gradient-to-r from-gray-900 via-blue-600 to-gray-900 bg-clip-text text-transparent">
+                    {import.meta.env.VITE_APP_NAME}
+                  </span>
+                </div>
+                <span className="text-[10px] font-medium text-gray-500 tracking-wider uppercase">
+                  Affiliate
+                </span>
+              </div>
+            </div>
+
+            {/* Slogan */}
+            <div className="hidden lg:flex flex-col ml-16">
+              <h2 className="text-base font-medium text-gray-800">
+                Transform Your Links into Revenue
+              </h2>
+              <p className="text-sm text-gray-500">
+                Create, Share, and Earn with Smart Affiliate Marketing
+              </p>
             </div>
           </div>
           
