@@ -16,6 +16,7 @@ import {
   Grid,
   List as ListIcon,
 } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../components/ui/Tooltip';
 
 interface StoreWithStats extends Store {
   productsCount?: number;
@@ -102,182 +103,201 @@ export default function StoreList() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Your Stores</h1>
-          <p className="text-gray-500 mt-1">Manage and monitor your affiliate stores</p>
-        </div>
-        <button
-          onClick={() => navigate('/stores/create')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 shadow-sm"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Create Store</span>
-        </button>
-      </div>
-
-      {stores.length > 0 && (
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search stores..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+      <TooltipProvider>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Your Stores</h1>
+            <p className="text-gray-500 mt-1">Manage and monitor your affiliate stores</p>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              <Grid className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              <ListIcon className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/stores/create')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 shadow-sm"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Create Store</span>
+          </button>
         </div>
-      )}
 
-      {stores.length === 0 ? (
-        <EmptyState />
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStores.map((store) => (
-            <div key={store.id} className="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-blue-50 rounded-lg p-2">
-                      <StoreIcon className="h-6 w-6 text-blue-600" />
+        {stores.length > 0 && (
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search stores..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                <Grid className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                <ListIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {stores.length === 0 ? (
+          <EmptyState />
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredStores.map((store) => (
+              <div key={store.id} className="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-blue-50 rounded-lg p-2">
+                        <StoreIcon className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{store.name}</h3>
+                        <p className="text-sm text-gray-500 mt-1">{store.description}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{store.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">{store.description}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/stores/${store.id}/settings`)}
-                    className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50 rounded-lg"
-                  >
-                    <Settings className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                    <Package className="h-5 w-5 text-gray-400 mx-auto mb-1" />
-                    <p className="text-sm font-medium text-gray-900">{store.productsCount || 0}</p>
-                    <p className="text-xs text-gray-500">Products</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                    <BarChart2 className="h-5 w-5 text-gray-400 mx-auto mb-1" />
-                    <p className="text-sm font-medium text-gray-900">{store.totalClicks || 0}</p>
-                    <p className="text-xs text-gray-500">Clicks</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                    <p className="text-sm font-medium text-gray-900">
-                      {new Date(store.lastUpdated || store.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </p>
-                    <p className="text-xs text-gray-500">Updated</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <button
-                    onClick={() => handleStoreClick(store.id)}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center"
-                  >
-                    Manage Store
-                    <ExternalLink className="h-4 w-4 ml-1" />
-                  </button>
-                  {netlifyUrl && (
                     <button
-                      onClick={() => handlePreviewClick(store.id)}
-                      className="text-gray-500 hover:text-gray-600 text-sm font-medium inline-flex items-center"
+                      onClick={() => navigate(`/stores/${store.id}/settings`)}
+                      className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50 rounded-lg"
                     >
-                      Preview
-                      <Eye className="h-4 w-4 ml-1" />
+                      <Settings className="h-5 w-5" />
                     </button>
-                  )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                      <Package className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-sm font-medium text-gray-900">{store.productsCount || 0}</p>
+                      <p className="text-xs text-gray-500">Products</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                      <BarChart2 className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-sm font-medium text-gray-900">{store.totalClicks || 0}</p>
+                      <p className="text-xs text-gray-500">Clicks</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                      <p className="text-sm font-medium text-gray-900">
+                        {new Date(store.lastUpdated || store.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </p>
+                      <p className="text-xs text-gray-500">Updated</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <button
+                      onClick={() => handleStoreClick(store.id)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center"
+                    >
+                      Manage Store
+                      <ExternalLink className="h-4 w-4 ml-1" />
+                    </button>
+                    {netlifyUrl && (
+                      <button
+                        onClick={() => handlePreviewClick(store.id)}
+                        className="text-gray-500 hover:text-gray-600 text-sm font-medium inline-flex items-center"
+                      >
+                        Preview
+                        <Eye className="h-4 w-4 ml-1" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Clicks</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredStores.map((store) => (
-                  <tr key={store.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-blue-50 rounded-lg p-2">
-                          <StoreIcon className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{store.name}</p>
-                          <p className="text-sm text-gray-500">{store.description}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {store.productsCount || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {store.totalClicks || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(store.lastUpdated || store.updated_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => handleStoreClick(store.id)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          Manage
-                        </button>
-                        {netlifyUrl && (
-                          <button
-                            onClick={() => handlePreviewClick(store.id)}
-                            className="text-gray-500 hover:text-gray-600"
-                          >
-                            Preview
-                          </button>
-                        )}
-                        <button
-                          onClick={() => navigate(`/stores/${store.id}/settings`)}
-                          className="text-gray-400 hover:text-gray-500"
-                        >
-                          <Settings className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Clicks</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredStores.map((store) => (
+                    <tr key={store.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-blue-50 rounded-lg p-2">
+                            <StoreIcon className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{store.name}</p>
+                            <p className="text-sm text-gray-500">{store.description}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {store.productsCount || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {store.totalClicks || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(store.lastUpdated || store.updated_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex items-center space-x-4">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => handleStoreClick(store.id)}
+                                className="text-gray-600 hover:text-blue-600 transition-colors"
+                              >
+                                <Package className="h-5 w-5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Manage Store</TooltipContent>
+                          </Tooltip>
+
+                          {netlifyUrl && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => handlePreviewClick(store.id)}
+                                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                                >
+                                  <Eye className="h-5 w-5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Preview Store</TooltipContent>
+                            </Tooltip>
+                          )}
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => navigate(`/stores/${store.id}/settings`)}
+                                className="text-gray-600 hover:text-blue-600 transition-colors"
+                              >
+                                <Settings className="h-5 w-5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Store Settings</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </TooltipProvider>
     </div>
   );
 }
