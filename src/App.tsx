@@ -59,9 +59,9 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Store Preview Routes */}
-            <Route path="/preview/:storeId" element={<StoreView />} />
-            <Route path="/preview/:storeId/products/:productId" element={<ProductView />} />
+            {/* Store User Routes */}
+            <Route path="/user/:storeId" element={<StoreView />} />
+            <Route path="/user/:storeId/products/:productId" element={<ProductView />} />
             
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>

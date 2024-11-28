@@ -55,7 +55,7 @@ export default function StoreList() {
       console.error('Netlify URL not configured');
       return;
     }
-    window.open(`${netlifyUrl}/preview/${storeId}`, '_blank');
+    window.open(`${netlifyUrl}/user/${storeId}`, '_blank');
   };
 
   const handleStoreClick = async (storeId: string) => {
