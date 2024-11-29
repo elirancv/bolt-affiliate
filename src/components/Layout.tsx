@@ -4,6 +4,7 @@ import MainMenu from './ui/MainMenu';
 import { Menu as MenuIcon } from 'lucide-react';
 import UserMenu from './UserMenu';
 import { cn } from '../lib/utils';
+import { motion } from 'framer-motion';
 
 export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -41,9 +42,9 @@ export default function Layout() {
               </button>
 
               {/* Header Slogan */}
-              <div className="hidden sm:block relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur"></div>
-                <p className="relative text-[13px] tracking-wide font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <div className="hidden sm:block relative cursor-pointer">
+                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur" />
+                <p className="relative text-[13px] tracking-wide font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent transition-opacity duration-200 hover:opacity-80">
                   Transform Clicks into Profit • Maximize Your Revenue
                 </p>
               </div>
