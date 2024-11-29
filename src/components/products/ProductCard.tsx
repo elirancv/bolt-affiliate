@@ -1,21 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '../../types';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice, cn } from '../../lib/utils';
 import { Edit, ExternalLink, Share2, Trash2, Package } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { toast } from 'react-hot-toast';
-import { cn } from '../../lib/utils';
-import {
-  Button as NewButton,
-  ButtonProps,
-} from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "../ui/tooltip";
 
 interface ProductCardProps {
   product: Product;
@@ -24,7 +19,7 @@ interface ProductCardProps {
   viewMode: 'grid' | 'list';
 }
 
-interface ActionButtonProps extends ButtonProps {
+interface ActionButtonProps extends Button.ButtonProps {
   icon: React.ReactNode;
   tooltip: string;
 }
@@ -33,14 +28,14 @@ const ActionButton = ({ icon, tooltip, ...props }: ActionButtonProps) => (
   <TooltipProvider delayDuration={300}>
     <Tooltip>
       <TooltipTrigger asChild>
-        <NewButton
+        <Button
           variant="ghost"
           size="sm"
           className="text-gray-500 hover:text-gray-700"
           {...props}
         >
           {icon}
-        </NewButton>
+        </Button>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={5}>
         <p className="text-xs">{tooltip}</p>
