@@ -19,7 +19,10 @@ export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    const savedViewMode = localStorage.getItem('productViewMode');
+    return (savedViewMode === 'list' || savedViewMode === 'grid') ? savedViewMode : 'grid';
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -129,6 +132,11 @@ export default function ProductList() {
     }
   };
 
+  const handleViewModeChange = (mode: 'grid' | 'list') => {
+    setViewMode(mode);
+    localStorage.setItem('productViewMode', mode);
+  };
+
   const hasActiveFilters = filters.status.length > 0 || 
     filters.category.length > 0 || 
     filters.minPrice !== '' || 
@@ -144,7 +152,7 @@ export default function ProductList() {
         hasActiveFilters={hasActiveFilters}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         onToggleFilters={() => setShowFilters(!showFilters)}
       />
 
@@ -187,18 +195,16 @@ export default function ProductList() {
         </div>
 
         {/* Main Content */}
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Filters Sidebar */}
+        <div className="flex flex-col gap-4">
+          {/* Filters Section */}
           {showFilters && (
-            <div className="w-full lg:w-64 flex-shrink-0">
-              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm sticky top-[185px]">
-                <ProductFilters
-                  categories={categories}
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  onClose={() => setShowFilters(false)}
-                />
-              </div>
+            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+              <ProductFilters
+                categories={categories}
+                filters={filters}
+                onFiltersChange={setFilters}
+                onClose={() => setShowFilters(false)}
+              />
             </div>
           )}
 

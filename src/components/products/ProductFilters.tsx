@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, SlidersHorizontal } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/Select';
 
@@ -40,39 +40,45 @@ export function ProductFilters({
     onFiltersChange({ ...filters, category: newCategory });
   };
 
+  const hasActiveFilters = filters.category.length > 0 || filters.status.length > 0 || filters.minPrice || filters.maxPrice;
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900">Filters</h3>
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearFilters}
-          >
-            Clear All
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <SlidersHorizontal className="h-4 w-4 text-gray-500" />
+          <h3 className="text-sm font-medium text-gray-900">Filters</h3>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-auto"
+            >
+              Clear all
+            </Button>
+          )}
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700 p-1 h-auto"
+        >
+          <X className="h-3 w-3" />
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Filter Groups */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         {/* Category Filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Category
-          </label>
+        <div>
           <Select
             value={filters.category[0] || 'all'}
             onValueChange={handleCategoryChange}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full h-8 text-xs">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -87,15 +93,12 @@ export function ProductFilters({
         </div>
 
         {/* Status Filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Status
-          </label>
+        <div>
           <Select
             value={filters.status[0] || 'all'}
             onValueChange={handleStatusChange}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full h-8 text-xs">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -106,81 +109,84 @@ export function ProductFilters({
           </Select>
         </div>
 
-        {/* Price Range Filters */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Min Price
-          </label>
-          <input
-            type="number"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={filters.minPrice}
-            onChange={(e) => onFiltersChange({ ...filters, minPrice: e.target.value })}
-            placeholder="Min Price"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Max Price
-          </label>
-          <input
-            type="number"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={filters.maxPrice}
-            onChange={(e) => onFiltersChange({ ...filters, maxPrice: e.target.value })}
-            placeholder="Max Price"
-          />
+        {/* Price Range */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+              <span className="text-gray-500 text-xs">$</span>
+            </div>
+            <input
+              type="number"
+              className="w-full pl-5 pr-2 h-8 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={filters.minPrice}
+              onChange={(e) => onFiltersChange({ ...filters, minPrice: e.target.value })}
+              placeholder="Min"
+            />
+          </div>
+          <span className="text-gray-400 text-xs">to</span>
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+              <span className="text-gray-500 text-xs">$</span>
+            </div>
+            <input
+              type="number"
+              className="w-full pl-5 pr-2 h-8 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={filters.maxPrice}
+              onChange={(e) => onFiltersChange({ ...filters, maxPrice: e.target.value })}
+              placeholder="Max"
+            />
+          </div>
         </div>
       </div>
 
       {/* Active Filters */}
-      <div className="flex flex-wrap gap-2 pt-4">
-        {filters.category.length > 0 && (
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm">
-            Category: {categories.find(c => c.id === filters.category[0])?.name}
-            <button
-              onClick={() => onFiltersChange({ ...filters, category: [] })}
-              className="ml-1 hover:text-blue-900"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-        {filters.status.length > 0 && (
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm">
-            Status: {filters.status[0]}
-            <button
-              onClick={() => onFiltersChange({ ...filters, status: [] })}
-              className="ml-1 hover:text-blue-900"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-        {filters.minPrice && (
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm">
-            Min Price: ${filters.minPrice}
-            <button
-              onClick={() => onFiltersChange({ ...filters, minPrice: '' })}
-              className="ml-1 hover:text-blue-900"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-        {filters.maxPrice && (
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm">
-            Max Price: ${filters.maxPrice}
-            <button
-              onClick={() => onFiltersChange({ ...filters, maxPrice: '' })}
-              className="ml-1 hover:text-blue-900"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-      </div>
+      {hasActiveFilters && (
+        <div className="flex flex-wrap gap-1.5 pt-2">
+          {filters.category.length > 0 && (
+            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100">
+              <span className="text-xs text-blue-700">
+                {categories.find(c => c.id === filters.category[0])?.name}
+              </span>
+              <button
+                onClick={() => onFiltersChange({ ...filters, category: [] })}
+                className="text-blue-400 hover:text-blue-600"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          {filters.status.length > 0 && (
+            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100">
+              <span className="text-xs text-blue-700">
+                {filters.status[0].charAt(0).toUpperCase() + filters.status[0].slice(1)}
+              </span>
+              <button
+                onClick={() => onFiltersChange({ ...filters, status: [] })}
+                className="text-blue-400 hover:text-blue-600"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          {(filters.minPrice || filters.maxPrice) && (
+            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100">
+              <span className="text-xs text-blue-700">
+                {filters.minPrice && filters.maxPrice
+                  ? `$${filters.minPrice} - $${filters.maxPrice}`
+                  : filters.minPrice
+                  ? `Min $${filters.minPrice}`
+                  : `Max $${filters.maxPrice}`}
+              </span>
+              <button
+                onClick={() => onFiltersChange({ ...filters, minPrice: '', maxPrice: '' })}
+                className="text-blue-400 hover:text-blue-600"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
