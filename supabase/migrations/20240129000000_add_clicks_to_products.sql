@@ -44,10 +44,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Grant execute permission on the function
 GRANT EXECUTE ON FUNCTION get_product_clicks_in_period(uuid, timestamp with time zone, timestamp with time zone) TO authenticated;
 
+-- Drop existing function if it exists
+DROP FUNCTION IF EXISTS get_top_products_with_clicks(uuid[], timestamp with time zone);
+
 -- Function to get top products with their click counts for a time period
 CREATE OR REPLACE FUNCTION get_top_products_with_clicks(
-    p_store_ids uuid[],
-    p_start_date timestamp with time zone
+    store_ids uuid[],
+    start_date timestamp with time zone
 )
 RETURNS TABLE (
     product_id uuid,
@@ -72,8 +75,9 @@ BEGIN
         COUNT(pc.id) as period_clicks
     FROM products p
     LEFT JOIN product_clicks pc ON p.id = pc.product_id 
-        AND pc.clicked_at >= p_start_date
-    WHERE p.store_id = ANY(p_store_ids)
+        AND pc.clicked_at >= start_date
+    WHERE p.store_id = ANY(store_ids)
+    AND p.status = 'active'
     GROUP BY p.id, p.name, p.price, p.image_urls, p.store_id, p.product_url, p.affiliate_url
     ORDER BY period_clicks DESC
     LIMIT 5;
