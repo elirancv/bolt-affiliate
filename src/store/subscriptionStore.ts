@@ -8,7 +8,7 @@ interface FeatureLimits {
 }
 
 interface SubscriptionState {
-  currentPlan: null;
+  currentPlan: any;
   availablePlans: [];
   isLoading: boolean;
   error: string | null;
@@ -36,26 +36,46 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   fetchCurrentPlan: async () => {
     try {
       set({ isLoading: true, error: null });
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        set({ currentPlan: null, isLoading: false });
+        return;
+      }
+
       const { data, error } = await supabase
-        .from('subscriptions')
-        .select(`
-          *,
-          subscription_plans (
-            name,
-            code,
-            description,
-            price,
-            billing_interval,
-            features:plan_feature_limits (
-              feature_code,
-              limit_value
-            )
-          )
-        `)
+        .from('user_subscriptions')
+        .select('*')
+        .eq('id', userData.user.id)
         .single();
 
       if (error) throw error;
-      set({ currentPlan: data, isLoading: false });
+
+      // If we have a subscription with a Stripe subscription ID, fetch the plan details
+      if (data?.stripe_subscription_id) {
+        const { data: planData, error: planError } = await supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('stripe_price_id', data.stripe_price_id)
+          .single();
+
+        if (!planError && planData) {
+          data.plan = planData;
+        }
+      }
+
+      set({ 
+        currentPlan: {
+          ...data,
+          plan: data?.plan || {
+            name: data?.tier || 'Free',
+            description: 'Free tier',
+            price: 0,
+            billing_interval: 'month'
+          }
+        }, 
+        isLoading: false 
+      });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -190,7 +210,6 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
-      console.error('Error fetching feature limits:', error);
       set({ 
         error: error.message || 'Failed to fetch feature limits', 
         isLoading: false,
@@ -228,3 +247,20 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     }
   },
 }));
+
+export const fetchCurrentPlan = async () => {
+  try {
+    const { data: subscription, error } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return subscription ? subscription.plan : 'free';
+  } catch (error) {
+    return 'free';
+  }
+};

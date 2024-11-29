@@ -112,6 +112,17 @@ export default function Dashboard() {
               previousTimeFilter = new Date(timeFilter.getTime() - 24 * 60 * 60 * 1000);
           }
 
+          // Get total products count for all stores
+          const { count: totalProducts, error: productsCountError } = await supabase
+            .from('products')
+            .select('*', { count: 'exact' })
+            .in('store_id', storeIds)
+            .eq('status', 'active');
+
+          if (productsCountError) {
+            console.error('Error fetching total products:', productsCountError);
+          }
+
           // Get products data with period clicks
           const { data: topProductsData, error: productsError } = await supabase
             .rpc('get_top_products_with_clicks', {
@@ -175,7 +186,7 @@ export default function Dashboard() {
               positive: true
             },
             products: {
-              value: topProductsData?.length.toString() || '0',
+              value: totalProducts?.toString() || '0',
               positive: true
             },
             visitors: {
@@ -272,7 +283,7 @@ export default function Dashboard() {
           />
           <StatsCard
             title="Products"
-            value={productCount}
+            value={statsData?.products.value}
             icon={LayoutGrid}
             trend={statsData?.products && {
               value: statsData.products.value,
@@ -509,7 +520,7 @@ export default function Dashboard() {
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                  <span>{productCount} products listed</span>
+                  <span>{statsData?.products.value} products listed</span>
                   <span>8 need attention</span>
                 </div>
               </div>

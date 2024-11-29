@@ -48,7 +48,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-right" expand={true} richColors />
       <div className="min-h-screen bg-gray-100">
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={!user ? <LandingPage /> : <Navigate to="/dashboard" replace />} />

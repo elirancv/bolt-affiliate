@@ -47,31 +47,30 @@ const SubscriptionStatus = () => {
           {currentPlan ? (
             <>
               <p className="mt-2 text-sm text-gray-500">
-                You are currently on the {currentPlan.subscription_plans.name} plan
+                You are currently on the {currentPlan.plan?.name || 'Free'} plan
               </p>
               <div className="mt-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(currentPlan.status)}`}>
-                  {formatStatus(currentPlan.status)}
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(currentPlan.status || 'free')}`}>
+                  {formatStatus(currentPlan.status || 'free')}
                 </span>
               </div>
-              {currentPlan.status === 'active' && (
+              {currentPlan.status === 'active' && currentPlan.current_period_end && (
                 <p className="mt-2 text-sm text-gray-500">
                   {daysRemaining} days remaining in current billing period
                 </p>
               )}
-              {currentPlan.cancel_at_period_end && (
-                <div className="mt-2 flex items-start">
-                  <AlertCircle className="h-5 w-5 text-yellow-500 mr-2" />
-                  <p className="text-sm text-yellow-700">
-                    Your subscription will end on {new Date(currentPlan.current_period_end).toLocaleDateString()}
-                  </p>
-                </div>
-              )}
             </>
           ) : (
-            <p className="mt-2 text-sm text-gray-500">
-              No active subscription
-            </p>
+            <>
+              <p className="mt-2 text-sm text-gray-500">
+                You are currently on the Free plan
+              </p>
+              <div className="mt-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor('free')}`}>
+                  Free
+                </span>
+              </div>
+            </>
           )}
         </div>
         <button

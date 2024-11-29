@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
@@ -20,24 +20,40 @@ interface Product {
 
 const getProducts = async () => {
   try {
-    console.log('Fetching products...');
-    const { data, error } = await supabase
+    console.debug('Starting getProducts function...');
+    
+    // Get products with click counts from the view
+    const { data: productsWithClicks, error: viewError } = await supabase
       .from('product_clicks_view')
-      .select('*')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .select('*');
 
-    if (error) {
-      console.error('Supabase error:', error);
-      throw error;
+    console.debug('Raw query result:', {
+      hasError: !!viewError,
+      dataLength: productsWithClicks?.length || 0,
+      error: viewError
+    });
+
+    if (viewError) {
+      console.error('Error fetching products:', viewError);
+      throw viewError;
     }
-    
-    console.log('Fetched products:', data);
-    
-    // Transform the data to match the Product interface
-    return data.map(product => ({
-      id: product.product_id,
-      name: product.product_name,
+
+    if (!productsWithClicks) {
+      console.debug('No products found in the view');
+      return [];
+    }
+
+    // Filter active products
+    const activeProducts = productsWithClicks.filter(p => p.status === 'active');
+    console.debug('Active products:', {
+      total: productsWithClicks.length,
+      active: activeProducts.length
+    });
+
+    // Transform the data
+    const transformedProducts = activeProducts.map(product => ({
+      id: product.product_id || product.id,
+      name: product.product_name || product.name,
       description: product.description,
       store_id: product.store_id,
       image_url: product.image_url,
@@ -45,16 +61,23 @@ const getProducts = async () => {
       is_featured: product.is_featured,
       created_at: product.created_at,
       updated_at: product.updated_at,
-      views: 0, // Views will be implemented later
+      views: 0,
       clicks: product.click_count || 0
     }));
+
+    console.debug('Final transformed products:', {
+      count: transformedProducts.length,
+      products: transformedProducts
+    });
+
+    return transformedProducts;
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('Error in getProducts:', error);
     throw error;
   }
 };
 
-const SkeletonCard = () => (
+const SkeletonCard = React.memo(() => (
   <div className="bg-white border border-gray-100 rounded-lg p-4 space-y-4">
     <div className="aspect-square bg-gray-200 rounded animate-pulse" />
     <div className="space-y-2">
@@ -63,29 +86,88 @@ const SkeletonCard = () => (
     </div>
     <div className="grid grid-cols-3 gap-4">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="space-y-1">
+        <div key={`skeleton-stat-${i}`} className="space-y-1">
           <div className="h-3 bg-gray-200 rounded w-full animate-pulse" />
           <div className="h-3 bg-gray-200 rounded w-2/3 animate-pulse" />
         </div>
       ))}
     </div>
   </div>
-);
+));
+
+const ProductCard = React.memo(({ product, onProductClick }: { product: Product; onProductClick: (id: string) => void }) => (
+  <div
+    className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+    onClick={() => onProductClick(product.id)}
+  >
+    {product.image_url ? (
+      <img
+        src={product.image_url}
+        alt={product.name}
+        className="aspect-square object-cover rounded mb-4"
+      />
+    ) : (
+      <div className="aspect-square bg-gray-100 rounded mb-4 flex items-center justify-center">
+        <ShoppingBag className="w-12 h-12 text-gray-400" />
+      </div>
+    )}
+    <h3 className="font-medium text-gray-900 mb-1">{product.name}</h3>
+    <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+      {product.description}
+    </p>
+    <div className="grid grid-cols-3 gap-4 text-sm">
+      <div key={`${product.id}-views`}>
+        <div className="text-gray-500">Views</div>
+        <div className="font-medium">{product.views || 0}</div>
+      </div>
+      <div key={`${product.id}-clicks`}>
+        <div className="text-gray-500">Clicks</div>
+        <div className="font-medium">{product.clicks || 0}</div>
+      </div>
+      <div key={`${product.id}-ctr`}>
+        <div className="text-gray-500">CTR</div>
+        <div className="font-medium">
+          {product.views
+            ? `${((product.clicks || 0) / product.views * 100).toFixed(1)}%`
+            : '0%'}
+        </div>
+      </div>
+    </div>
+  </div>
+));
 
 const TopProducts = () => {
   const navigate = useNavigate();
   const { data: products, isLoading, error } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: getProducts,
+    onSuccess: (data) => {
+      console.debug('Products query succeeded:', {
+        count: data?.length || 0,
+        products: data
+      });
+    },
+    onError: (error) => {
+      console.error('Products query failed:', error);
+    }
   });
 
-  console.log('TopProducts render:', { products, isLoading, error });
+  const handleProductClick = useCallback((id: string) => {
+    navigate(`/products/${id}`);
+  }, [navigate]);
+
+  // Debug log for render
+  console.debug('TopProducts render state:', {
+    productsCount: products?.length || 0,
+    isLoading,
+    hasError: !!error
+  });
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <SkeletonCard key={i} />
+        {[...Array(6)].map((_, i) => (
+          <SkeletonCard key={`skeleton-${i}`} />
         ))}
       </div>
     );
@@ -122,45 +204,11 @@ const TopProducts = () => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {products.map((product) => (
-        <div
+        <ProductCard
           key={product.id}
-          className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate(`/products/${product.id}`)}
-        >
-          {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="aspect-square object-cover rounded mb-4"
-            />
-          ) : (
-            <div className="aspect-square bg-gray-100 rounded mb-4 flex items-center justify-center">
-              <ShoppingBag className="w-12 h-12 text-gray-400" />
-            </div>
-          )}
-          <h3 className="font-medium text-gray-900 mb-1">{product.name}</h3>
-          <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-            {product.description}
-          </p>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <div className="text-gray-500">Views</div>
-              <div className="font-medium">{product.views || 0}</div>
-            </div>
-            <div>
-              <div className="text-gray-500">Clicks</div>
-              <div className="font-medium">{product.clicks || 0}</div>
-            </div>
-            <div>
-              <div className="text-gray-500">CTR</div>
-              <div className="font-medium">
-                {product.views
-                  ? `${((product.clicks || 0) / product.views * 100).toFixed(1)}%`
-                  : '0%'}
-              </div>
-            </div>
-          </div>
-        </div>
+          product={product}
+          onProductClick={handleProductClick}
+        />
       ))}
     </div>
   );
