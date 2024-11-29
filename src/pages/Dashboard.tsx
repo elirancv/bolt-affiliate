@@ -9,6 +9,8 @@ import TopProducts from '../components/dashboard/TopProducts';
 import ProductFilter from '../components/dashboard/ProductFilter';
 import type { Product } from '../types';
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'Linkxstore';
+
 export default function Dashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export default function Dashboard() {
 
         if (stores && stores.length > 0) {
           const storeIds = stores.map(store => store.id);
-          const normalizedStoreIds = storeIds.map(id => String(id));
+          const normalizedStoreIds = storeIds;
 
           // Calculate time filter
           let timeFilter;
@@ -63,8 +65,8 @@ export default function Dashboard() {
           // Get products data with period clicks
           const { data: topProductsData, error: productsError } = await supabase
             .rpc('get_top_products_with_clicks', {
-              p_store_ids: normalizedStoreIds,
-              p_start_date: timeFilter
+              store_ids: normalizedStoreIds,
+              start_date: new Date(timeFilter)
             });
 
           if (productsError) {
@@ -153,10 +155,10 @@ export default function Dashboard() {
       {/* Mobile Navigation */}
       <div className="lg:hidden">
         <button
-          className="fixed top-4 left-4 z-50 p-4 rounded-md bg-white shadow-md"
+          className="fixed top-4 left-4 z-50 p-2 rounded-md bg-white shadow-md hover:bg-gray-50 transition-colors duration-200"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          <Menu className="h-6 w-6 text-gray-600" />
+          <Menu className={`h-6 w-6 text-gray-600 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-90' : ''}`} />
         </button>
         
         {isMobileMenuOpen && (
@@ -166,28 +168,31 @@ export default function Dashboard() {
               onClick={() => setIsMobileMenuOpen(false)}
             />
             
-            <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
-              <div className="absolute top-0 right-0 -mr-12 pt-2">
-                <button
-                  className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <span className="sr-only">Close sidebar</span>
-                  <svg className="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-                <div className="flex-shrink-0 flex items-center px-4">
-                  <img
-                    className="h-8 w-auto"
-                    src="/logo.png"
-                    alt="Bolt Affiliate"
-                  />
-                </div>
-                <nav className="mt-5 px-2 space-y-1">
-                  {/* Add mobile navigation items here */}
+            <div className="relative flex-1 flex flex-col max-w-[180px] w-full bg-white">
+              <div className="flex-1 h-0 overflow-y-auto pt-16">
+                <nav className="px-2">
+                  {/* Navigation items */}
+                  <button
+                    onClick={() => navigate('/stores')}
+                    className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full transition-colors duration-150"
+                  >
+                    <Store className="mr-2 h-5 w-5" />
+                    Stores
+                  </button>
+                  <button
+                    onClick={() => navigate('/products')}
+                    className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full transition-colors duration-150"
+                  >
+                    <LayoutGrid className="mr-2 h-5 w-5" />
+                    Products
+                  </button>
+                  <button
+                    onClick={() => navigate('/analytics')}
+                    className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full transition-colors duration-150"
+                  >
+                    <TrendingUp className="mr-2 h-5 w-5" />
+                    Analytics
+                  </button>
                 </nav>
               </div>
             </div>
