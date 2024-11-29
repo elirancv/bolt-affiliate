@@ -30,21 +30,21 @@ const MenuItems = () => {
   return (
     <div className="flex-1 flex flex-col">
       {/* Logo */}
-      <div className="flex items-center px-6 pt-5 pb-6">
+      <div className="flex items-center px-6 pt-3 pb-4">
         <div className="flex items-center">
           <div className="relative">
-            <div className="absolute -inset-3 bg-blue-50 rounded-lg blur-sm opacity-75"></div>
-            <img src="/logo.svg" alt="Logo" className="relative h-7 w-7" />
+            <div className="absolute -inset-6 bg-blue-50 rounded-lg blur-sm opacity-75"></div>
+            <img src="/logo.svg" alt="Logo" className="relative h-10 w-10" />
           </div>
-          <div className="ml-3">
-            <h1 className="text-base font-semibold text-gray-900 leading-none mb-1">Linkxstore</h1>
-            <p className="text-xs font-medium text-gray-500 leading-none">Your Affiliate Hub</p>
+          <div className="ml-4">
+            <h1 className="text-lg font-semibold text-gray-900 leading-none mb-1.5">Linkxstore</h1>
+            <p className="text-[11px] font-medium text-gray-500 leading-none">Your Affiliate Hub</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="px-3 pb-2">
+      <div className="px-3">
         <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-2">
