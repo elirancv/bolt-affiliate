@@ -31,14 +31,15 @@ const MenuItems = () => {
     <div className="flex-1 flex flex-col">
       {/* Logo */}
       <div className="flex items-center px-6 pt-3 pb-4">
-        <div className="flex items-center">
+        <div className="flex items-center group cursor-pointer">
           <div className="relative">
-            <div className="absolute -inset-6 bg-blue-50 rounded-lg blur-sm opacity-75"></div>
-            <img src="/logo.svg" alt="Logo" className="relative h-10 w-10" />
+            {/* Logo background glow */}
+            <div className="absolute -inset-3 bg-blue-50 rounded-lg opacity-75 group-hover:bg-blue-100 group-hover:scale-110 transition-all duration-300 ease-out"></div>
+            <img src="/logo.svg" alt="Logo" className="relative h-10 w-10 transform group-hover:rotate-6 group-hover:scale-110 transition-transform duration-300 ease-out" />
           </div>
           <div className="ml-4">
-            <h1 className="text-lg font-semibold text-gray-900 leading-none mb-1.5">Linkxstore</h1>
-            <p className="text-[11px] font-medium text-gray-500 leading-none">Your Affiliate Hub</p>
+            <h1 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-blue-600 to-gray-900 transform group-hover:scale-105 transition-transform duration-300">Linkxstore</h1>
+            <p className="text-xs font-medium text-gray-500 group-hover:text-blue-500 transition-colors duration-300">Your Affiliate Hub</p>
           </div>
         </div>
       </div>
