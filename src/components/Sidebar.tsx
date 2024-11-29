@@ -8,6 +8,7 @@ import {
   FileText,
   BarChart,
   ArrowLeft,
+  CreditCard
 } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { cn } from '../lib/utils';
@@ -37,6 +38,9 @@ export default function Sidebar() {
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Stores', href: '/stores', icon: Store },
       { name: 'Products', href: '/products', icon: ShoppingBag },
+      { name: 'Analytics', href: '/analytics', icon: BarChart },
+      { name: 'Billing', href: '/billing', icon: CreditCard },
+      { name: 'Settings', href: '/settings', icon: Settings },
     ];
 
     // Add admin option if user is admin (at the top)

@@ -6,55 +6,63 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  initialized: boolean;
   setUser: (user: User | null) => void;
   setError: (error: string | null) => void;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  initializeAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isLoading: true,
   error: null,
-  setUser: (user) => set({ user }),
+  initialized: false,
+
+  setUser: (user) => set({ user, isLoading: false }),
   setError: (error) => set({ error }),
-  signOut: async () => {
-    try {
-      await supabase.auth.signOut();
-      set({ user: null, error: null });
-    } catch (error) {
-      set({ error: 'Failed to sign out. Please try again.' });
-    }
-  },
-  refreshSession: async () => {
+
+  initializeAuth: async () => {
+    if (get().initialized) return;
+
     try {
       set({ isLoading: true, error: null });
+      console.log('Initializing auth...');
+      
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+      console.log('Session check result:', { session, error });
+
       if (error) throw error;
-      
+
       if (session?.user) {
-        console.log('User metadata:', session.user.user_metadata);
-        console.log('Full user:', session.user);
+        console.log('Found existing session:', session.user.email);
         const metadata = session.user.user_metadata as UserMetadata;
         const user: User = {
           id: session.user.id,
           email: session.user.email!,
           metadata: {
-            first_name: metadata?.first_name,
-            last_name: metadata?.last_name,
+            first_name: metadata?.first_name || '',
+            last_name: metadata?.last_name || '',
             subscription_tier: metadata?.subscription_tier || 'free'
           }
         };
-        set({ user, error: null });
+        set({ user, isLoading: false, initialized: true });
       } else {
-        set({ user: null });
+        console.log('No existing session found');
+        set({ user: null, isLoading: false, initialized: true });
       }
     } catch (error: any) {
-      set({ error: error.message });
-      console.error('Session refresh error:', error);
-    } finally {
-      set({ isLoading: false });
+      console.error('Auth initialization error:', error);
+      set({ error: error.message, isLoading: false, initialized: true });
+    }
+  },
+
+  signOut: async () => {
+    try {
+      await supabase.auth.signOut();
+      set({ user: null, error: null });
+    } catch (error: any) {
+      set({ error: 'Failed to sign out. Please try again.' });
     }
   }
 }));

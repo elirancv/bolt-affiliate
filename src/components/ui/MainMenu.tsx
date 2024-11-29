@@ -8,6 +8,9 @@ import {
   Store,
   ShoppingBag,
   Shield,
+  CreditCard,
+  Settings,
+  BarChart3,
   X
 } from 'lucide-react';
 
@@ -20,6 +23,9 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Stores', href: '/stores', icon: Store },
   { name: 'Products', href: '/products', icon: ShoppingBag },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Subscription', href: '/subscription', icon: CreditCard },
+  { name: 'Billing', href: '/billing', icon: Settings },
 ];
 
 const MenuItems = () => {
@@ -55,23 +61,17 @@ const MenuItems = () => {
             <NavLink
               key={item.name}
               to={item.href}
-              className={cn(
-                'group flex items-center px-3 py-2 text-sm font-medium rounded-lg',
-                'transition-all duration-150 ease-in-out',
-                'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/20',
-                isActive
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              )}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+                  isActive
+                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100/80'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                )
+              }
             >
-              <item.icon 
-                className={cn(
-                  "flex-shrink-0 w-5 h-5 transition-transform duration-150",
-                  "group-hover:scale-110 group-hover:rotate-3",
-                  isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'
-                )}
-              />
-              <span className="ml-3 font-medium">{item.name}</span>
+              <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+              {item.name}
             </NavLink>
           );
         })}
@@ -81,46 +81,49 @@ const MenuItems = () => {
 };
 
 const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
+  const location = useLocation();
+  
+  useEffect(() => {
+    onClose();
+  }, [location, onClose]);
+
   return (
     <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
+      <Dialog as="div" className="relative z-50 lg:hidden" onClose={onClose}>
         <Transition.Child
           as={Fragment}
-          enter="transition-opacity ease-out duration-300"
+          enter="transition-opacity ease-linear duration-300"
           enterFrom="opacity-0"
           enterTo="opacity-100"
-          leave="transition-opacity ease-in duration-200"
+          leave="transition-opacity ease-linear duration-300"
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-gray-900/50" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-40 flex">
+        <div className="fixed inset-0 flex">
           <Transition.Child
             as={Fragment}
-            enter="transform transition-all ease-out duration-300"
+            enter="transition ease-in-out duration-300 transform"
             enterFrom="-translate-x-full"
             enterTo="translate-x-0"
-            leave="transform transition-all ease-in duration-200"
+            leave="transition ease-in-out duration-300 transform"
             leaveFrom="translate-x-0"
             leaveTo="-translate-x-full"
           >
-            <Dialog.Panel className="relative flex w-full max-w-[280px] flex-col bg-white">
-              <div className="flex h-16 items-center justify-between px-4 border-b border-gray-100">
-                <Dialog.Title className="text-lg font-semibold">
-                  Menu
-                </Dialog.Title>
-                <button
-                  type="button"
-                  className="rounded-lg p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                  onClick={onClose}
-                >
-                  <span className="sr-only">Close menu</span>
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto py-4">
+            <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
+              <div className="flex grow flex-col overflow-y-auto bg-white pb-4">
+                <div className="absolute right-0 top-0 -mr-12 pt-2">
+                  <button
+                    type="button"
+                    className="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                    onClick={onClose}
+                  >
+                    <span className="sr-only">Close sidebar</span>
+                    <X className="h-6 w-6 text-white" aria-hidden="true" />
+                  </button>
+                </div>
                 <MenuItems />
               </div>
             </Dialog.Panel>
@@ -135,14 +138,10 @@ interface MainMenuComponent extends React.FC {
   Mobile: React.FC<MobileMenuProps>;
 }
 
-const MainMenu: MainMenuComponent = () => {
-  return (
-    <div className="flex flex-col h-full py-4">
-      <MenuItems />
-    </div>
-  );
+const MainMenu = () => {
+  return <MenuItems />;
 };
 
 MainMenu.Mobile = MobileMenu;
 
-export default MainMenu;
+export default MainMenu as MainMenuComponent;

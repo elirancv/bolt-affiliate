@@ -23,40 +23,51 @@ export interface PromotionSettings {
   banner_enabled: boolean;
 }
 
+export type CategoryType = 'custom' | 'predefined';
+
 export interface Category {
   id: string;
+  store_id?: string;
   name: string;
-  store_id: string;
-  created_at: string;
-  updated_at: string;
+  description?: string;
+  type: CategoryType;
+  slug: string;
+  productCount?: number;
+  products?: Array<{
+    product: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
+
+export interface ProductCategory {
+  product_id: string;
+  category_id: string;
+  created_at: string;
+}
+
+export type ProductStatus = 'active' | 'inactive' | 'draft';
 
 export interface Product {
   id: string;
   store_id: string;
-  category_id: string;
   name: string;
-  title?: string;
   description?: string;
   price: number;
-  sale_price?: number;
-  product_url: string;
-  affiliate_url?: string;
-  image_urls?: string[];
-  status: 'active' | 'inactive';
-  metadata?: Record<string, any>;
+  discount_price?: number;
+  image_url?: string;
+  status: ProductStatus;
+  is_featured?: boolean;
   created_at: string;
   updated_at: string;
-  clicks?: number;
-  last_clicked_at?: string;
-  category?: {
+  total_views?: number;
+  total_clicks?: number;
+  conversion_rate?: number;
+  period_clicks?: number;
+  stores?: {
     id: string;
     name: string;
-  };
-  store?: {
-    id: string;
-    name: string;
-    logo_url?: string;
   };
 }
 

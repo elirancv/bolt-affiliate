@@ -115,12 +115,16 @@ export default function ProductList() {
     setFilteredProducts(filtered);
   }, [products, filters, searchQuery]);
 
-  // Calculate stats
-  const stats = {
-    total: filteredProducts.length,
-    active: filteredProducts.filter(p => p.status === 'active').length,
-    inactive: filteredProducts.filter(p => p.status === 'inactive').length
-  };
+  const activeProducts = products.filter(product => product.status === 'active');
+  const inactiveProducts = products.filter(product => product.status === 'inactive');
+
+  console.log('Product status debug:', {
+    allProducts: products.map(p => ({ id: p.id, name: p.name, status: p.status })),
+    activeCount: activeProducts.length,
+    inactiveCount: inactiveProducts.length,
+    activeProducts: activeProducts.map(p => ({ id: p.id, name: p.name })),
+    inactiveProducts: inactiveProducts.map(p => ({ id: p.id, name: p.name }))
+  });
 
   const handleDeleteProduct = async (productId: string) => {
     try {
@@ -163,7 +167,7 @@ export default function ProductList() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-gray-600">Total Results</div>
-                <div className="mt-1 text-2xl font-semibold text-gray-900">{stats.total}</div>
+                <div className="mt-1 text-2xl font-semibold text-gray-900">{products.length}</div>
               </div>
               <div className="p-2 bg-blue-50 rounded-lg">
                 <Package className="h-5 w-5 text-blue-600" />
@@ -174,7 +178,7 @@ export default function ProductList() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-green-600">Active</div>
-                <div className="mt-1 text-2xl font-semibold text-green-700">{stats.active}</div>
+                <div className="mt-1 text-2xl font-semibold text-green-700">{activeProducts.length}</div>
               </div>
               <div className="p-2 bg-green-50 rounded-lg">
                 <Package className="h-5 w-5 text-green-600" />
@@ -185,7 +189,7 @@ export default function ProductList() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-orange-600">Inactive</div>
-                <div className="mt-1 text-2xl font-semibold text-orange-700">{stats.inactive}</div>
+                <div className="mt-1 text-2xl font-semibold text-orange-700">{inactiveProducts.length}</div>
               </div>
               <div className="p-2 bg-orange-50 rounded-lg">
                 <Package className="h-5 w-5 text-orange-600" />

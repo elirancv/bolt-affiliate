@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { LogOut, User, Store, Menu } from 'lucide-react';
+import NotificationCenter from './notifications/NotificationCenter';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -65,18 +66,21 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         {user && (
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <User className="h-5 w-5 text-gray-600 flex-shrink-0" />
-              <span className="text-sm text-gray-600 truncate max-w-[120px] hidden lg:inline">
-                {user.email}
-              </span>
+              <NotificationCenter />
+              <div className="ml-4">
+                <User className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                <span className="text-sm text-gray-600 truncate max-w-[120px] hidden lg:inline">
+                  {user.email}
+                </span>
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center text-gray-600 hover:text-gray-900"
+                title="Sign Out"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center text-gray-600 hover:text-gray-900"
-              title="Sign Out"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
           </div>
         )}
       </div>

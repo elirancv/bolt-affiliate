@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from '../lib/supabase';
+import { useSubscriptionStore } from '../store/subscriptionStore';
+import { supabase } from '../lib/supabase'; 
 import { Store, LayoutGrid, Users, TrendingUp, ChevronDown, Clock, MousePointerClick, LayoutDashboard } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
 import TimeRangeSelector from '../components/dashboard/TimeRangeSelector';
 import TopProducts from '../components/dashboard/TopProducts';
 import ProductFilter from '../components/dashboard/ProductFilter';
 import AnalyticsChart from '../components/dashboard/AnalyticsChart';
-import MainMenu from '../components/MainMenu'; // Fix MainMenu import
-import PageHeader from '../components/ui/PageHeader'; // Import PageHeader component
+import MainMenu from '../components/MainMenu'; 
+import PageHeader from '../components/ui/PageHeader'; 
+import SubscriptionStatus from '../components/subscription/SubscriptionStatus';
+import SubscriptionUsage from '../components/subscription/SubscriptionUsage';
 import type { Product } from '../types';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Linkxstore';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
+  const { fetchCurrentPlan, updateFeatureLimits } = useSubscriptionStore();
   const navigate = useNavigate();
   const [storeCount, setStoreCount] = useState(0);
   const [productCount, setProductCount] = useState(0);
@@ -49,23 +53,43 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
+    fetchCurrentPlan();
+  }, [fetchCurrentPlan]);
+
+  useEffect(() => {
     if (!user) return;
 
     const loadDashboardData = async () => {
       try {
         setLoading(true);
         // Get stores count
-        const { data: stores } = await supabase
+        const { data: stores, error: storesError } = await supabase
           .from('stores')
           .select('id, name, created_at')
           .eq('user_id', user.id);
         
+        if (storesError) {
+          console.error('Error fetching stores:', storesError);
+          return;
+        }
+
         setStores(stores || []);
         setStoreCount(stores?.length || 0);
 
         if (stores && stores.length > 0) {
           const storeIds = stores.map(store => store.id);
-          const normalizedStoreIds = storeIds;
+
+          // Get user feature limits
+          const { data: featureLimits, error: limitsError } = await supabase
+            .from('user_feature_limits')
+            .select('*')
+            .single();
+          
+          if (limitsError) {
+            console.error('Error fetching feature limits:', limitsError);
+          } else if (featureLimits) {
+            updateFeatureLimits(featureLimits.limits);
+          }
 
           // Calculate time filter and previous period
           const now = new Date();
@@ -91,72 +115,40 @@ export default function Dashboard() {
           // Get products data with period clicks
           const { data: topProductsData, error: productsError } = await supabase
             .rpc('get_top_products_with_clicks', {
-              store_ids: normalizedStoreIds,
-              start_date: timeFilter
+              start_date: timeFilter.toISOString(),
+              store_ids: storeIds
             });
 
           if (productsError) {
             console.error('Error fetching products:', productsError);
-          } else if (topProductsData && topProductsData.length > 0) {
-            const productStoreIds = [...new Set(topProductsData.map(p => p.product_store_id))];
-            
-            const { data: storesData } = await supabase
-              .from('stores')
-              .select('id, name')
-              .in('id', productStoreIds);
-
-            const storesMap = new Map(storesData?.map(store => [store.id, store]) || []);
-            const productsWithData = topProductsData.map(data => ({
-              id: data.product_id,
-              name: data.product_name,
-              price: data.product_price,
-              image_urls: data.product_image_urls,
-              store_id: data.product_store_id,
-              product_url: data.product_url,
-              affiliate_url: data.affiliate_url,
-              period_clicks: data.period_clicks,
-              stores: storesMap.get(data.product_store_id)
-            }));
-
-            // Sort products based on filter
-            const sortedProducts = [...productsWithData].sort((a, b) => {
-              switch (productFilter) {
-                case 'clicks_desc':
-                  return (b.period_clicks || 0) - (a.period_clicks || 0);
-                case 'clicks_asc':
-                  return (a.period_clicks || 0) - (b.period_clicks || 0);
-                case 'price_desc':
-                  return (b.price || 0) - (a.price || 0);
-                case 'price_asc':
-                  return (a.price || 0) - (b.price || 0);
-                case 'name_asc':
-                  return a.name.localeCompare(b.name);
-                case 'name_desc':
-                  return b.name.localeCompare(a.name);
-                default:
-                  return (b.period_clicks || 0) - (a.period_clicks || 0);
-              }
-            });
-
-            setTopProducts(sortedProducts);
           } else {
-            setTopProducts([]);
+            setTopProducts(topProductsData || []);
           }
 
           // Get analytics data for current period
-          const { data: analyticsData } = await supabase
+          const { data: analyticsData, error: analyticsError } = await supabase
             .from('analytics')
             .select('*')
-            .in('store_id', normalizedStoreIds)
+            .in('store_id', storeIds)
             .gte('date', timeFilter.toISOString().split('T')[0]);
 
+          if (analyticsError) {
+            console.error('Error fetching analytics:', analyticsError);
+            return;
+          }
+
           // Get analytics data for previous period
-          const { data: previousAnalyticsData } = await supabase
+          const { data: previousAnalyticsData, error: previousAnalyticsError } = await supabase
             .from('analytics')
             .select('*')
-            .in('store_id', normalizedStoreIds)
+            .in('store_id', storeIds)
             .gte('date', previousTimeFilter.toISOString().split('T')[0])
             .lt('date', timeFilter.toISOString().split('T')[0]);
+
+          if (previousAnalyticsError) {
+            console.error('Error fetching previous analytics:', previousAnalyticsError);
+            return;
+          }
 
           setAnalytics(analyticsData || []);
 
@@ -176,48 +168,22 @@ export default function Dashboard() {
           setTotalClicks(totalClicks);
           setConversionRate(totalVisitors > 0 ? (totalClicks / totalVisitors * 100) : 0);
 
-          // Get total products count and trend
-          const { count: productsCount } = await supabase
-            .from('products')
-            .select('id', { count: 'exact' })
-            .in('store_id', normalizedStoreIds);
-
-          // Get products created in previous period
-          const { count: previousProductsCount } = await supabase
-            .from('products')
-            .select('id', { count: 'exact' })
-            .in('store_id', normalizedStoreIds)
-            .lt('created_at', timeFilter.toISOString());
-
-          const productTrend = previousProductsCount === 0 ? 100 : Math.round((productsCount - previousProductsCount) / previousProductsCount * 100);
-
-          // Get stores trend
-          const { count: previousStoresCount } = await supabase
-            .from('stores')
-            .select('id', { count: 'exact' })
-            .eq('user_id', user.id)
-            .lt('created_at', timeFilter.toISOString());
-
-          const storeTrend = previousStoresCount === 0 ? 100 : Math.round((stores.length - previousStoresCount) / previousStoresCount * 100);
-
-          setProductCount(productsCount || 0);
-          
-          // Update stats cards with real trends
+          // Update stats data
           setStatsData({
             stores: {
-              value: `${Math.round(storeTrend)}%`,
-              positive: storeTrend >= 0
+              value: storeCount.toString(),
+              positive: true
             },
             products: {
-              value: `${Math.round(productTrend)}%`,
-              positive: productTrend >= 0
+              value: topProductsData?.length.toString() || '0',
+              positive: true
             },
             visitors: {
-              value: `${Math.round(visitorTrend)}%`,
+              value: totalVisitors.toString(),
               positive: visitorTrend >= 0
             },
             clicks: {
-              value: `${Math.round(clickTrend)}%`,
+              value: totalClicks.toString(),
               positive: clickTrend >= 0
             }
           });
@@ -230,7 +196,30 @@ export default function Dashboard() {
     };
 
     loadDashboardData();
-  }, [user, timeRange, productFilter]);
+  }, [user, timeRange, productFilter, updateFeatureLimits]);
+
+  useEffect(() => {
+    const loadFeatureLimits = async () => {
+      try {
+        const { data: featureLimits, error: limitsError } = await supabase
+          .from('user_feature_limits')
+          .select('*')
+          .single();
+        
+        if (limitsError) {
+          console.error('Error fetching feature limits:', limitsError);
+        } else if (featureLimits) {
+          // Update subscription store with limits
+          const limits = featureLimits.limits;
+          updateFeatureLimits(limits);
+        }
+      } catch (error) {
+        console.error('Error loading feature limits:', error);
+      }
+    };
+
+    loadFeatureLimits();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -534,6 +523,16 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Subscription Status and Usage */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="col-span-1">
+            <SubscriptionStatus />
+          </div>
+          <div className="col-span-1">
+            <SubscriptionUsage />
           </div>
         </div>
 

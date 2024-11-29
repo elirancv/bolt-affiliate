@@ -253,39 +253,28 @@ export async function deleteStore(storeId: string) {
   }
 }
 
-export async function createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
+export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
   try {
-    // Check if user is authenticated
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session?.user) {
-      throw new Error('User not authenticated');
-    }
-
-    // Check if user has access to the store
-    const { data: store } = await supabase
-      .from('stores')
-      .select('id')
-      .eq('id', product.store_id)
-      .eq('user_id', session.session.user.id)
-      .single();
-
-    if (!store) {
-      throw new Error('Store not found or user does not have access');
-    }
-
-    // Create the product
-    const { data, error } = await supabase
+    console.log('Creating product with data:', data);
+    const { data: newProduct, error } = await supabase
       .from('products')
       .insert([{
-        ...product,
-        clicks: 0,
-        last_clicked_at: null
+        ...data,
+        status: data.status || 'active',
+        is_featured: data.is_featured || false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }])
       .select()
       .single();
 
-    if (error) throw error;
-    return data;
+    if (error) {
+      console.error('Error creating product:', error);
+      throw error;
+    }
+
+    console.log('Product created successfully:', newProduct);
+    return newProduct;
   } catch (error) {
     console.error('Error creating product:', error);
     throw error;
@@ -294,25 +283,31 @@ export async function createProduct(product: Omit<Product, 'id' | 'created_at' |
 
 export async function getProducts(storeId?: string): Promise<Product[]> {
   try {
+    console.log('Fetching products for store:', storeId);
     let query = supabase
       .from('products')
       .select(`
         *,
-        category:categories(id, name),
-        store:stores(id, name, logo_url)
-      `)
-      .order('created_at', { ascending: false });
+        stores (
+          id,
+          name
+        )
+      `);
 
     if (storeId) {
       query = query.eq('store_id', storeId);
-    } else {
-      // If no store ID is provided, get products from all stores but only active ones
-      query = query.eq('status', 'active');
     }
 
     const { data, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching products:', error);
+      throw error;
+    }
+
+    console.log('Fetched products raw data:', data);
+    console.log('Products with status:', data?.map(p => ({ id: p.id, name: p.name, status: p.status, is_featured: p.is_featured })));
+
     return data || [];
   } catch (error) {
     console.error('Error getting products:', error);
@@ -322,27 +317,71 @@ export async function getProducts(storeId?: string): Promise<Product[]> {
 
 export async function getCategories(storeId: string): Promise<Category[]> {
   try {
-    const { data, error } = await supabase
+    // First get predefined categories
+    const { data: predefinedCategories, error: predefinedError } = await supabase
       .from('categories')
-      .select('*')
-      .eq('store_id', storeId)
+      .select(`
+        id,
+        name,
+        description,
+        type,
+        slug,
+        products:products_categories(
+          product:products(
+            id,
+            name
+          )
+        )
+      `)
+      .eq('type', 'predefined')
       .order('name');
 
-    if (error) throw error;
-    return data;
+    if (predefinedError) throw predefinedError;
+
+    // Then get store-specific categories if storeId is provided
+    const { data: customCategories, error: customError } = await supabase
+      .from('categories')
+      .select(`
+        id,
+        name,
+        description,
+        type,
+        slug,
+        products:products_categories(
+          product:products(
+            id,
+            name
+          )
+        )
+      `)
+      .eq('store_id', storeId)
+      .eq('type', 'custom')
+      .order('name');
+
+    if (customError) throw customError;
+
+    // Combine and return all categories
+    const allCategories = [...(predefinedCategories || []), ...(customCategories || [])];
+    return allCategories.map(category => ({
+      ...category,
+      productCount: category.products?.length || 0
+    }));
   } catch (error) {
     console.error('Error getting categories:', error);
     throw error;
   }
 }
 
-export async function createCategory(storeId: string, name: string) {
+export async function createCategory(storeId: string, name: string, description?: string) {
   try {
     const { data, error } = await supabase
       .from('categories')
       .insert([{
         store_id: storeId,
-        name
+        name,
+        description,
+        type: 'custom',
+        slug: name.toLowerCase().replace(/\s+/g, '-')
       }])
       .select()
       .single();
@@ -355,17 +394,96 @@ export async function createCategory(storeId: string, name: string) {
   }
 }
 
-export async function updateProduct(productId: string, updates: Partial<Product>) {
+export async function updateCategory(categoryId: string, updates: Partial<Category>) {
   try {
     const { data, error } = await supabase
-      .from('products')
+      .from('categories')
       .update(updates)
-      .eq('id', productId)
+      .eq('id', categoryId)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
+
     return data;
+  } catch (error) {
+    console.error('Error updating category:', error);
+    throw error;
+  }
+}
+
+export async function deleteCategory(categoryId: string) {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', categoryId);
+
+    if (error) {
+      console.error('Error deleting category:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    throw error;
+  }
+}
+
+export async function updateProductCategories(productId: string, categoryIds: string[]) {
+  try {
+    // First delete existing category relationships
+    const { error: deleteError } = await supabase
+      .from('products_categories')
+      .delete()
+      .eq('product_id', productId);
+
+    if (deleteError) {
+      console.error('Error deleting product categories:', deleteError);
+      throw deleteError;
+    }
+
+    // Then insert new category relationships
+    if (categoryIds.length > 0) {
+      const { error: insertError } = await supabase
+        .from('products_categories')
+        .insert(
+          categoryIds.map(categoryId => ({
+            product_id: productId,
+            category_id: categoryId
+          }))
+        );
+
+      if (insertError) {
+        console.error('Error inserting product categories:', insertError);
+        throw insertError;
+      }
+    }
+  } catch (error) {
+    console.error('Error updating product categories:', error);
+    throw error;
+  }
+}
+
+export async function updateProduct(productId: string, data: Partial<Product>) {
+  try {
+    console.log('Updating product:', productId, 'with data:', data);
+    const { error } = await supabase
+      .from('products')
+      .update({
+        ...data,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId);
+
+    if (error) {
+      console.error('Error updating product:', error);
+      throw error;
+    }
+
+    console.log('Product updated successfully');
   } catch (error) {
     console.error('Error updating product:', error);
     throw error;
@@ -465,20 +583,32 @@ export async function trackPageView(storeId: string) {
 
 export async function trackProductClick(storeId: string, productId: string) {
   try {
-    // Use the increment_product_clicks function to update both analytics and product clicks
-    const { error } = await supabase.rpc('increment_product_clicks', {
-      p_store_id: storeId,
-      p_product_id: productId
-    });
+    const { error } = await supabase
+      .rpc('increment_product_clicks', {
+        p_product_id: productId,
+        p_store_id: storeId
+      });
 
     if (error) {
-      console.error('Error in increment_product_clicks:', error);
+      console.error('Error tracking product click:', error);
       throw error;
     }
-
-    return true;
   } catch (error) {
     console.error('Error tracking product click:', error);
+    throw error;
+  }
+}
+
+export async function updateProductFeatureStatus(productId: string, isFeature: boolean) {
+  try {
+    const { error } = await supabase
+      .from('products')
+      .update({ is_featured: isFeature })
+      .eq('id', productId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating product feature status:', error);
     throw error;
   }
 }

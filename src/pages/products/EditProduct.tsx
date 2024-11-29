@@ -50,7 +50,7 @@ export default function EditProduct() {
     );
   }
 
-  const handleSubmit = async (data: Omit<Product, 'id' | 'created_at' | 'store_id'>) => {
+  const handleSubmit = async (data: Partial<Product>) => {
     setLoading(true);
     setError('');
 
@@ -58,9 +58,12 @@ export default function EditProduct() {
       await updateProduct(productId, {
         ...data,
         store_id: storeId,
+        status: data.status || 'active',
+        is_featured: data.is_featured || false
       });
       navigate(`/stores/${storeId}/products`);
     } catch (err: any) {
+      console.error('Error updating product:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -100,10 +103,13 @@ export default function EditProduct() {
         <ProductForm
           storeId={storeId}
           onSubmit={handleSubmit}
-          onCancel={() => navigate(-1)}
           loading={loading}
           error={error}
-          initialData={product}
+          initialData={{
+            ...product,
+            status: product.status || 'active',
+            is_featured: product.is_featured || false
+          }}
         />
       </div>
     </div>
