@@ -292,29 +292,41 @@ export async function createProduct(product: Omit<Product, 'id' | 'created_at' |
   }
 }
 
-export async function getProducts(storeId: string) {
+export async function getProducts(storeId?: string): Promise<Product[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('products')
-      .select('*')
-      .eq('store_id', storeId)
+      .select(`
+        *,
+        category:categories(id, name),
+        store:stores(id, name, logo_url)
+      `)
       .order('created_at', { ascending: false });
 
+    if (storeId) {
+      query = query.eq('store_id', storeId);
+    } else {
+      // If no store ID is provided, get products from all stores but only active ones
+      query = query.eq('status', 'active');
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
-    return data;
+    return data || [];
   } catch (error) {
     console.error('Error getting products:', error);
     throw error;
   }
 }
 
-export async function getCategories(storeId: string) {
+export async function getCategories(storeId: string): Promise<Category[]> {
   try {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
       .eq('store_id', storeId)
-      .order('name', { ascending: true });
+      .order('name');
 
     if (error) throw error;
     return data;

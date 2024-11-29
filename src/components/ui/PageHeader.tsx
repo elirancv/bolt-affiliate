@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from './Button';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, Store, Package, Settings, FileText, BarChart2 } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 interface PageHeaderProps {
   title: string;
@@ -11,14 +12,26 @@ interface PageHeaderProps {
   onBack?: () => void;
   onClose?: () => void;
   actions?: React.ReactNode;
+  className?: string;
+  icon?: string | React.ElementType;
 }
 
 const fadeInUp = {
   initial: { opacity: 0, y: -10 },
   animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+  transition: { duration: 0.2 }
 };
 
-export function PageHeader({
+const iconMap: Record<string, React.ElementType> = {
+  store: Store,
+  package: Package,
+  settings: Settings,
+  pages: FileText,
+  analytics: BarChart2,
+};
+
+const PageHeader = ({
   title,
   subtitle,
   showBackButton,
@@ -26,44 +39,60 @@ export function PageHeader({
   onBack,
   onClose,
   actions,
-}: PageHeaderProps) {
+  className,
+  icon,
+}: PageHeaderProps) => {
+  const IconComponent = typeof icon === 'string' ? iconMap[icon.toLowerCase()] : icon;
+
   return (
     <motion.div
       initial="initial"
       animate="animate"
       variants={fadeInUp}
-      className="flex items-center justify-between py-4"
+      className={cn(
+        "flex items-center justify-between mb-6",
+        className
+      )}
     >
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center gap-4">
         {showBackButton && (
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             onClick={onBack}
-            className="rounded-full"
+            className="mr-2"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
+        
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+          <div className="flex items-center gap-3">
+            {IconComponent && (
+              <IconComponent className="h-6 w-6 text-gray-600" />
+            )}
+            <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+          </div>
+          {subtitle && (
+            <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+          )}
         </div>
       </div>
 
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center gap-4">
         {actions}
         {showCloseButton && (
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             onClick={onClose}
-            className="rounded-full"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </Button>
         )}
       </div>
     </motion.div>
   );
-}
+};
+
+export default PageHeader;

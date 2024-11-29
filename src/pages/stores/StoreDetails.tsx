@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Store, Settings, Package, BarChart2, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Store as StoreType } from '../../types';
+import PageHeader from '../../components/ui/PageHeader'; 
 
 export default function StoreDetails() {
   const { storeId } = useParams();
@@ -65,7 +66,7 @@ export default function StoreDetails() {
   }
 
   const menuItems = [
-    { icon: Package, label: 'Products', path: `products` },
+    { icon: Package, label: 'Products', path: `products`, subtitle: 'Manage and track your affiliate products' },
     { icon: BarChart2, label: 'Analytics', path: `analytics` },
     { icon: FileText, label: 'Pages', path: `pages` },
     { icon: Settings, label: 'Settings', path: `settings` },
@@ -73,10 +74,13 @@ export default function StoreDetails() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{store.name}</h1>
-        <p className="text-gray-500">Manage your store's products, analytics, and settings</p>
-      </div>
+      <PageHeader
+        title={store.name}
+        subtitle="Manage your store's products, analytics, and settings"
+        icon={Store}
+        showBackButton
+        onBack={() => navigate('/stores')}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {menuItems.map((item) => {
@@ -85,12 +89,17 @@ export default function StoreDetails() {
             <Link
               key={item.path}
               to={item.path}
-              className="p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow flex items-center gap-3"
+              className="p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow flex flex-col gap-2"
             >
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Icon className="h-5 w-5 text-blue-600" />
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Icon className="h-5 w-5 text-blue-600" />
+                </div>
+                <span className="font-medium text-gray-900">{item.label}</span>
               </div>
-              <span className="font-medium text-gray-900">{item.label}</span>
+              {item.subtitle && (
+                <p className="text-sm text-gray-500 ml-11">{item.subtitle}</p>
+              )}
             </Link>
           );
         })}

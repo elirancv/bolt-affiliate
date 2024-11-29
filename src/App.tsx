@@ -71,7 +71,14 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/stores" element={<StoreList />} />
                 <Route path="/stores/create" element={<CreateStore />} />
-                <Route path="/products" element={<ProductList />} />
+                
+                {/* Product Routes */}
+                <Route path="/products">
+                  <Route index element={<ProductList />} />
+                  <Route path=":productId" element={<ProductView />} />
+                  <Route path=":productId/edit" element={<EditProduct />} />
+                  <Route path="add" element={<AddProduct />} />
+                </Route>
                 
                 {/* Store-specific Routes */}
                 <Route path="/stores/:storeId">

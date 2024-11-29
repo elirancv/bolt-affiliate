@@ -25,10 +25,8 @@ export interface PromotionSettings {
 
 export interface Category {
   id: string;
-  store_id: string;
   name: string;
-  description?: string;
-  parent_id?: string;
+  store_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -36,18 +34,30 @@ export interface Category {
 export interface Product {
   id: string;
   store_id: string;
-  category_id?: string;
+  category_id: string;
   name: string;
+  title?: string;
   description?: string;
   price: number;
   sale_price?: number;
   product_url: string;
   affiliate_url?: string;
   image_urls?: string[];
-  status: 'active' | 'inactive' | 'out_of_stock';
+  status: 'active' | 'inactive';
   metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
+  clicks?: number;
+  last_clicked_at?: string;
+  category?: {
+    id: string;
+    name: string;
+  };
+  store?: {
+    id: string;
+    name: string;
+    logo_url?: string;
+  };
 }
 
 export interface Click {

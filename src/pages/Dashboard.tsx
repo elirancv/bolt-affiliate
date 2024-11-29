@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
-import { Store, LayoutGrid, Users, TrendingUp, ChevronDown, Clock, MousePointerClick } from 'lucide-react';
+import { Store, LayoutGrid, Users, TrendingUp, ChevronDown, Clock, MousePointerClick, LayoutDashboard } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
 import TimeRangeSelector from '../components/dashboard/TimeRangeSelector';
 import TopProducts from '../components/dashboard/TopProducts';
 import ProductFilter from '../components/dashboard/ProductFilter';
 import AnalyticsChart from '../components/dashboard/AnalyticsChart';
 import MainMenu from '../components/MainMenu'; // Fix MainMenu import
+import PageHeader from '../components/ui/PageHeader'; // Import PageHeader component
 import type { Product } from '../types';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Linkxstore';
@@ -235,53 +236,35 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
       <div className="max-w-full mx-auto px-3 sm:px-6 lg:px-8 pt-16 pb-6 sm:pt-10">
+        <PageHeader
+          title={`Welcome back, ${user?.metadata?.first_name || 'User'}`}
+          subtitle="Track your performance and grow your business"
+          icon={LayoutDashboard}
+        />
+
+        {/* Filters Row */}
+        <div className="bg-white rounded-lg shadow-sm p-3 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium text-gray-700">
+                Dashboard Overview
+              </h3>
+            </div>
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+              <ProductFilter value={productFilter} onChange={setProductFilter} />
+              <TimeRangeSelector
+                timeRange={timeRange}
+                showTimeMenu={showTimeMenu}
+                onTimeRangeChange={setTimeRange}
+                onToggleTimeMenu={() => setShowTimeMenu(!showTimeMenu)}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Header Section */}
         <div className="pb-4 sm:pb-6">
           <div className="flex flex-col space-y-4 sm:space-y-6">
-            {/* Welcome and Plan Info */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline space-x-2">
-                  <h2 className="text-xl font-bold leading-7 text-gray-900 sm:text-2xl">
-                    Welcome back, {user?.metadata?.first_name || 'User'}
-                  </h2>
-                </div>
-                <div className="mt-1 flex items-center space-x-3">
-                  <p className="text-sm text-gray-500">
-                    Track your performance and grow your business
-                  </p>
-                  {user?.metadata?.subscription_tier && (
-                    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
-                      user.metadata.subscription_tier === 'pro' 
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {user.metadata.subscription_tier === 'pro' ? 'Pro Plan' : 'Free Plan'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Filters Row */}
-            <div className="bg-white rounded-lg shadow-sm p-3">
-              <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-gray-700">
-                    Dashboard Overview
-                  </h3>
-                </div>
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-                  <ProductFilter value={productFilter} onChange={setProductFilter} />
-                  <TimeRangeSelector
-                    timeRange={timeRange}
-                    showTimeMenu={showTimeMenu}
-                    onTimeRangeChange={setTimeRange}
-                    onToggleTimeMenu={() => setShowTimeMenu(!showTimeMenu)}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
