@@ -44,16 +44,16 @@ export default function AdminStats({ stats }: AdminStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-4 gap-4">
       {cards.map((card) => (
-        <div key={card.title} className="bg-white rounded-lg shadow-sm p-6">
+        <div key={card.title} className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">{card.title}</p>
-              <p className="text-2xl font-semibold mt-1">{card.value}</p>
+              <p className="text-sm font-medium text-gray-600">{card.title}</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{card.value}</p>
             </div>
-            <div className={`${card.color} p-3 rounded-lg`}>
-              <card.icon className="h-6 w-6 text-white" />
+            <div className={`p-2 ${card.color.replace('500', '50')} rounded-lg`}>
+              <card.icon className={`h-5 w-5 ${card.color.replace('bg-', 'text-').replace('500', '600')}`} />
             </div>
           </div>
         </div>

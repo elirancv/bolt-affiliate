@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getAdminStats } from '../../lib/admin';
 import { useAdmin } from '../../hooks/useAdmin';
-import AdminHeader from '../../components/admin/AdminHeader';
 import AdminStats from '../../components/admin/AdminStats';
 import UsersList from '../../components/admin/UsersList';
 import SubscriptionChart from '../../components/admin/SubscriptionChart';
@@ -9,6 +8,9 @@ import ActivityChart from '../../components/admin/ActivityChart';
 import StorePerformance from '../../components/admin/StorePerformance';
 import LoadingState from '../../components/admin/LoadingState';
 import ErrorState from '../../components/admin/ErrorState';
+import PageHeader from '../../components/ui/PageHeader';
+import { Shield } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/Select';
 
 interface AdminStats {
   totalUsers: number;
@@ -46,13 +48,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [timeFilter, setTimeFilter] = useState("all");
 
   useEffect(() => {
     const loadStats = async () => {
       if (!isAdminUser) return;
       
       try {
-        const data = await getAdminStats();
+        const data = await getAdminStats(timeFilter);
         setStats(data);
       } catch (err: any) {
         setError(err.message);
@@ -64,7 +67,7 @@ export default function AdminDashboard() {
     if (!adminCheckLoading && isAdminUser) {
       loadStats();
     }
-  }, [isAdminUser, adminCheckLoading]);
+  }, [isAdminUser, adminCheckLoading, timeFilter]);
 
   if (adminCheckLoading || loading) {
     return <LoadingState />;
@@ -83,29 +86,61 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <AdminHeader 
-        title="Admin Dashboard" 
-        subtitle="Monitor platform usage and user statistics"
-      />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <PageHeader
+          title="Admin Dashboard"
+          subtitle="Monitor platform usage and user statistics"
+          icon={Shield}
+          actions={
+            <Select value={timeFilter} onValueChange={setTimeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Last 24 Hours</SelectItem>
+                <SelectItem value="7d">Last 7 Days</SelectItem>
+                <SelectItem value="30d">Last 30 Days</SelectItem>
+                <SelectItem value="90d">Last 90 Days</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+              </SelectContent>
+            </Select>
+          }
+        />
 
-      <AdminStats stats={stats} />
+        <div className="space-y-6">
+          {/* Stats Overview */}
+          <AdminStats stats={stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ActivityChart activityByDate={stats.activityByDate} />
-        </div>
-        <div>
-          <SubscriptionChart usersByTier={stats.usersByTier} />
-        </div>
-      </div>
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                <ActivityChart activityByDate={stats.activityByDate} />
+              </div>
+            </div>
+            <div>
+              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                <SubscriptionChart 
+                  usersByTier={stats.usersByTier} 
+                  totalUsers={stats.totalUsers} 
+                />
+              </div>
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Users</h2>
-          <UsersList users={stats.users} />
+          {/* Lists Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Registered Users</h2>
+              <UsersList users={stats.users} />
+            </div>
+            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Store Performance</h2>
+              <StorePerformance stores={stats.storePerformance} />
+            </div>
+          </div>
         </div>
-        <StorePerformance stores={stats.storePerformance} />
       </div>
     </div>
   );
