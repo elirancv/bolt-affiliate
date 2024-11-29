@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../ui/tooltip";
+} from "../ui/Tooltip"; // Fix tooltip import path case sensitivity
 
 interface ProductCardProps {
   product: Product;
