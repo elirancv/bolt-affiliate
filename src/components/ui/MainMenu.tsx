@@ -21,8 +21,8 @@ interface MobileMenuProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Stores', href: '/stores', icon: Store },
-  { name: 'Products', href: '/products', icon: ShoppingBag },
+  { name: 'Stores', href: '/stores', icon: Store, matchPaths: ['/stores', '/stores/*'] },
+  { name: 'Products', href: '/products', icon: ShoppingBag, matchPaths: ['/products', '/stores/*/products'] },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Subscription', href: '/subscription', icon: CreditCard },
   { name: 'Billing', href: '/billing', icon: Settings },
@@ -56,12 +56,22 @@ const MenuItems = () => {
       </div>
       <nav className="flex-1 space-y-1 px-3 py-2">
         {items.map((item) => {
-          const isActive = location.pathname === item.href;
+          const isActive = item.matchPaths 
+            ? item.matchPaths.some(path => {
+                if (path.includes('*')) {
+                  const regexPattern = path.replace(/\*/g, '[^/]+');
+                  const regex = new RegExp(`^${regexPattern}$`);
+                  return regex.test(location.pathname);
+                }
+                return location.pathname === path;
+              })
+            : location.pathname === item.href;
+          
           return (
             <NavLink
               key={item.name}
               to={item.href}
-              className={({ isActive }) =>
+              className={() =>
                 cn(
                   'flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200',
                   isActive
