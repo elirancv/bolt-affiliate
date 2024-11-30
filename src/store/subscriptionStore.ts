@@ -1,255 +1,134 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { PostgrestError } from '@supabase/supabase-js';
+import { debounce } from 'lodash';
 
-interface FeatureLimits {
+export interface FeatureLimits {
   max_stores: number;
   total_products_limit: number;
   analytics_retention_days: number;
 }
 
-interface SubscriptionState {
-  currentPlan: any;
-  availablePlans: [];
-  isLoading: boolean;
-  error: string | null;
-  featureLimits: FeatureLimits | null;
-  tier: string | null;
-  fetchCurrentPlan: () => Promise<void>;
-  fetchAvailablePlans: () => Promise<void>;
-  upgradePlan: (planId: string) => Promise<{ sessionId: string; url: string }>;
-  cancelSubscription: () => Promise<void>;
-  reactivateSubscription: () => Promise<void>;
-  updateFeatureLimits: (limits: FeatureLimits) => void;
-  isWithinLimits: (type: 'stores' | 'products', currentCount: number) => boolean;
-  getRemainingLimit: (type: 'stores' | 'products', currentCount: number) => number;
-  fetchFeatureLimits: () => Promise<void>;
+export interface Subscription {
+  user_id: string;
+  tier: string;
+  active: boolean;
+  start_date: string;
+  end_date: string;
+  billing_period_start: string;
+  billing_period_end: string;
+  days_remaining: number;
+  subscription_status: 'active' | 'expired' | 'inactive' | 'past_due';
 }
 
-export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
-  currentPlan: null,
-  availablePlans: [],
+interface SubscriptionStore {
+  subscription: Subscription | null;
+  featureLimits: FeatureLimits | null;
+  isLoading: boolean;
+  error: PostgrestError | null;
+  fetchCurrentSubscription: () => Promise<Subscription | null>;
+  fetchFeatureLimits: () => Promise<FeatureLimits | null>;
+  isWithinLimits: (type: 'stores' | 'products', currentCount: number) => boolean;
+  getRemainingLimit: (type: 'stores' | 'products', currentCount: number) => number;
+}
+
+export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
+  subscription: null,
+  featureLimits: null,
   isLoading: false,
   error: null,
-  featureLimits: null,
-  tier: null,
 
-  fetchCurrentPlan: async () => {
-    try {
-      set({ isLoading: true, error: null });
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        set({ currentPlan: null, isLoading: false });
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('*')
-        .eq('id', userData.user.id)
-        .single();
-
-      if (error) throw error;
-
-      // If we have a subscription with a Stripe subscription ID, fetch the plan details
-      if (data?.stripe_subscription_id) {
-        const { data: planData, error: planError } = await supabase
-          .from('subscription_plans')
-          .select('*')
-          .eq('stripe_price_id', data.stripe_price_id)
-          .single();
-
-        if (!planError && planData) {
-          data.plan = planData;
-        }
-      }
-
-      set({ 
-        currentPlan: {
-          ...data,
-          plan: data?.plan || {
-            name: data?.tier || 'Free',
-            description: 'Free tier',
-            price: 0,
-            billing_interval: 'month'
-          }
-        }, 
-        isLoading: false 
-      });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
-
-  fetchAvailablePlans: async () => {
-    try {
-      set({ isLoading: true, error: null });
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select(`
-          *,
-          features:plan_feature_limits (
-            feature_code,
-            limit_value
-          )
-        `)
-        .eq('status', 'active')
-        .order('price');
-
-      if (error) throw error;
-      set({ availablePlans: data, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
-
-  upgradePlan: async (planId: string) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await fetch('/api/subscription-management', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          planId,
-          successUrl: `${window.location.origin}/dashboard?subscription=success`,
-          cancelUrl: `${window.location.origin}/dashboard?subscription=cancelled`,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const data = await response.json();
-      set({ isLoading: false });
-      return data;
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
-
-  cancelSubscription: async () => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await fetch('/api/subscription-management', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({ action: 'cancel' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to cancel subscription');
-      }
-
-      await get().fetchCurrentPlan();
-      set({ isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
-
-  reactivateSubscription: async () => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await fetch('/api/subscription-management', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({ action: 'reactivate' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reactivate subscription');
-      }
-
-      await get().fetchCurrentPlan();
-      set({ isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
-
-  updateFeatureLimits: (limits: FeatureLimits) => {
-    set({ featureLimits: limits });
-  },
-
-  fetchFeatureLimits: async () => {
+  fetchCurrentSubscription: debounce(async () => {
+    if (get().isLoading) return null; // Prevent concurrent fetches
+    
     set({ isLoading: true, error: null });
     try {
-      console.log('Fetching feature limits...');
-      const { data, error } = await supabase
-        .from('user_feature_limits')
-        .select('*')
-        .single();
-
-      console.log('Feature limits query result:', { data, error });
-
-      if (error) throw error;
-
-      if (!data) {
-        throw new Error('No feature limits found');
+      const { data, error } = await supabase.rpc('get_current_subscription');
+      if (error) {
+        set({ 
+          error: error as PostgrestError, 
+          isLoading: false,
+          subscription: null 
+        });
+        return null;
       }
-
-      console.log('Raw feature limits data:', data);
-
-      const limits: FeatureLimits = {
-        max_stores: data.limits.max_stores,
-        total_products_limit: data.limits.total_products_limit,
-        analytics_retention_days: data.limits.analytics_retention_days
-      };
-
-      console.log('Parsed feature limits:', limits);
-
-      set({
-        featureLimits: limits,
-        tier: data.tier,
-        isLoading: false,
-      });
+      
+      // Data will be an array with one row
+      const subscription = data?.[0] || null;
+      const currentSub = get().subscription;
+      
+      // Only update if the subscription has actually changed
+      if (JSON.stringify(subscription) !== JSON.stringify(currentSub)) {
+        set({ 
+          subscription, 
+          error: null,
+          isLoading: false 
+        });
+      } else {
+        set({ isLoading: false });
+      }
+      
+      return subscription;
     } catch (error) {
-      console.error('Error fetching feature limits:', error);
       set({ 
-        error: error.message || 'Failed to fetch feature limits', 
+        error: error as PostgrestError,
         isLoading: false,
-        featureLimits: {
-          max_stores: 1, // Default to 1 store for free tier
-          total_products_limit: 10, // Default to 10 products
-          analytics_retention_days: 7 // Default to 7 days
-        },
-        tier: 'free'
+        subscription: null 
       });
+      return null;
     }
-  },
+  }, 500),
+
+  fetchFeatureLimits: debounce(async () => {
+    if (get().isLoading) return null; // Prevent concurrent fetches
+    
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase.rpc('get_user_feature_limits');
+      if (error) {
+        set({ 
+          error: error as PostgrestError, 
+          isLoading: false,
+          featureLimits: null 
+        });
+        return null;
+      }
+      
+      // Data will be an array with one row
+      const featureLimits = data?.[0] || null;
+      const currentLimits = get().featureLimits;
+      
+      // Only update if the limits have actually changed
+      if (JSON.stringify(featureLimits) !== JSON.stringify(currentLimits)) {
+        set({ 
+          featureLimits, 
+          error: null,
+          isLoading: false 
+        });
+      } else {
+        set({ isLoading: false });
+      }
+      
+      return featureLimits;
+    } catch (error) {
+      set({ 
+        error: error as PostgrestError,
+        isLoading: false,
+        featureLimits: null 
+      });
+      return null;
+    }
+  }, 500),
 
   isWithinLimits: (type: 'stores' | 'products', currentCount: number) => {
     const { featureLimits } = get();
-    console.log('isWithinLimits check:', { type, currentCount, featureLimits });
-    
-    if (!featureLimits) {
-      console.log('No feature limits found');
-      return false;
-    }
+    if (!featureLimits) return false;
 
-    let result = false;
     switch (type) {
       case 'stores':
-        result = currentCount < featureLimits.max_stores;
-        console.log('Store limit check:', { currentCount, maxStores: featureLimits.max_stores, result });
-        return result;
+        return currentCount < featureLimits.max_stores;
       case 'products':
-        result = currentCount < featureLimits.total_products_limit;
-        console.log('Product limit check:', { currentCount, maxProducts: featureLimits.total_products_limit, result });
-        return result;
+        return currentCount < featureLimits.total_products_limit;
       default:
         return false;
     }
@@ -269,20 +148,3 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     }
   },
 }));
-
-export const fetchCurrentPlan = async () => {
-  try {
-    const { data: subscription, error } = await supabase
-      .from('user_subscriptions')
-      .select('*')
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    return subscription ? subscription.plan : 'free';
-  } catch (error) {
-    return 'free';
-  }
-};
