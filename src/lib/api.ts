@@ -345,7 +345,7 @@ export async function getProducts(storeId?: string): Promise<Product[]> {
           id,
           name
         ),
-        categories (
+        category:categories (
           id,
           name,
           description,
@@ -358,12 +358,14 @@ export async function getProducts(storeId?: string): Promise<Product[]> {
       query = query.eq('store_id', storeId);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
+      console.error('Supabase error:', error);
       throw error;
     }
 
+    console.log('Raw products data:', data);
     return data || [];
   } catch (error) {
     console.error('Error getting products:', error);

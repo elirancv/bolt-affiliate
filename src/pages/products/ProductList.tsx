@@ -8,7 +8,18 @@ import { ProductListStats } from '../../components/products/ProductListStats';
 import { ProductListContent } from '../../components/products/ProductListContent';
 import { ProductFilters } from '../../components/products/ProductFilters';
 import type { Product, Store } from '../../types';
-import { Package } from "lucide-react";
+import { cn } from '../../lib/utils';
+import { Package, Plus, Search, LayoutGrid, List, Filter, CheckCircle, XCircle } from "lucide-react";
+import { Button } from '../../components/ui';
+import { 
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/Select';
 
 export default function ProductList() {
   const navigate = useNavigate();
@@ -40,7 +51,6 @@ export default function ProductList() {
       try {
         // First load stores
         const storesData = await getStores(user.id);
-        console.log('Loaded stores:', storesData);
         setStores(storesData);
 
         // If no storeId is selected but we have stores, redirect to the first store
@@ -52,15 +62,11 @@ export default function ProductList() {
         // If we have a storeId, load its products and categories
         if (storeId) {
           setLoading(true);
-          console.log('Loading data for store:', storeId);
           
           const [productsData, categoriesData] = await Promise.all([
             getProducts(storeId),
             getCategories(storeId)
           ]);
-          
-          console.log('Loaded products:', productsData);
-          console.log('Loaded categories:', categoriesData);
           
           setProducts(productsData);
           setFilteredProducts(productsData);
@@ -69,16 +75,17 @@ export default function ProductList() {
           const categoriesWithProducts = categoriesData.filter(category => {
             if (category.type === 'system' && category.id === 'best-sellers') {
               // Include Best Sellers if there are featured products
-              return productsData.some(product => product.is_featured);
+              const hasFeaturedProducts = productsData.some(product => product.is_featured);
+              return hasFeaturedProducts;
             }
             // For other categories, check if any product has this category
-            return productsData.some(product => 
+            const hasProducts = productsData.some(product => 
               product.category_id === category.id || 
-              (product.categories && product.categories.id === category.id)
+              (product.category && product.category.id === category.id)
             );
+            return hasProducts;
           });
           
-          console.log('Categories with products:', categoriesWithProducts);
           setCategories(categoriesWithProducts);
         }
       } catch (error: any) {
@@ -94,29 +101,44 @@ export default function ProductList() {
 
   // Apply filters and search
   useEffect(() => {
-    let filtered = [...products];
-    console.log('Starting filter with products:', filtered.length);
-    console.log('Current filters:', filters);
+    if (!products) return;
 
+    let filtered = [...products];
+    
     // Apply search
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
+      
       filtered = filtered.filter(product => {
-        const title = (product.title || '').toLowerCase();
-        const description = (product.description || '').toLowerCase();
-        return title.includes(query) || description.includes(query);
+        // Safely convert values to string and handle null/undefined
+        const searchableFields = [
+          product?.name,
+          product?.description,
+          product?.sku,
+          product?.category?.name,
+          product?.metadata?.keywords,
+        ].filter(Boolean).map(field => {
+          if (Array.isArray(field)) {
+            return field.join(' ').toLowerCase();
+          }
+          return String(field).toLowerCase();
+        });
+        
+        // Check if any field contains the search query
+        return searchableFields.some(field => field.includes(query));
       });
-      console.log('After search filter:', filtered.length);
+      
+      console.log(`Search "${query}": found ${filtered.length} matches`);
     }
 
-    // Apply filters
+    // Apply status filters
     if (filters.status.length > 0) {
       filtered = filtered.filter(product => filters.status.includes(product.status));
-      console.log('After status filter:', filtered.length);
+      console.log(`Status filter: ${filtered.length} matches`);
     }
     
+    // Apply category filters
     if (filters.category.length > 0) {
-      console.log('Applying category filters:', filters.category);
       filtered = filtered.filter(product => {
         // Handle Best Sellers category
         if (filters.category.includes('best-sellers')) {
@@ -125,38 +147,40 @@ export default function ProductList() {
         // Handle regular categories
         return filters.category.some(categoryId => 
           product.category_id === categoryId || 
-          (product.categories && product.categories.id === categoryId)
+          (product.category && product.category.id === categoryId)
         );
       });
-      console.log('After category filter:', filtered.length);
+      console.log(`Category filter: ${filtered.length} matches`);
     }
 
-    if (filters.minPrice) {
-      filtered = filtered.filter(product => 
-        product.price && parseFloat(product.price) >= parseFloat(filters.minPrice)
-      );
-      console.log('After minPrice filter:', filtered.length);
-    }
-    if (filters.maxPrice) {
-      filtered = filtered.filter(product => 
-        product.price && parseFloat(product.price) <= parseFloat(filters.maxPrice)
-      );
-      console.log('After maxPrice filter:', filtered.length);
+    // Apply price filters
+    if (filters.minPrice || filters.maxPrice) {
+      if (filters.minPrice) {
+        const minPrice = parseFloat(filters.minPrice);
+        filtered = filtered.filter(product => 
+          product.price && !isNaN(parseFloat(product.price)) && parseFloat(product.price) >= minPrice
+        );
+      }
+      if (filters.maxPrice) {
+        const maxPrice = parseFloat(filters.maxPrice);
+        filtered = filtered.filter(product => 
+          product.price && !isNaN(parseFloat(product.price)) && parseFloat(product.price) <= maxPrice
+        );
+      }
+      console.log(`Price filter: ${filtered.length} matches`);
     }
 
     setFilteredProducts(filtered);
   }, [products, filters, searchQuery]);
 
   // Memoize filtered products
-  const activeProducts = useMemo(() => 
-    products.filter(product => product.status === 'active'),
-    [products]
-  );
-  
-  const inactiveProducts = useMemo(() => 
-    products.filter(product => product.status === 'inactive'),
-    [products]
-  );
+  const statusCounts = useMemo(() => {
+    return {
+      total: products.length,
+      active: products.filter(p => p.status === 'active').length,
+      inactive: products.filter(p => p.status === 'inactive').length
+    };
+  }, [products]);
 
   const handleDeleteProduct = async (productId: string) => {
     try {
@@ -179,83 +203,155 @@ export default function ProductList() {
     filters.maxPrice !== '';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ProductListHeader
-        stores={stores}
-        storeId={storeId}
-        viewMode={viewMode}
-        showFilters={showFilters}
-        hasActiveFilters={hasActiveFilters}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onViewModeChange={handleViewModeChange}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-      />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage and organize your store products
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button onClick={() => navigate('create')} className="flex items-center">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
+          </Button>
+        </div>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-gray-600">Total Results</div>
-                <div className="mt-1 text-2xl font-semibold text-gray-900">{products.length}</div>
-              </div>
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Package className="h-5 w-5 text-blue-600" />
-              </div>
+      {/* Store Selector */}
+      <div className="flex items-center space-x-4">
+        <Select
+          value={storeId || ''}
+          onValueChange={(value) => {
+            navigate(`/stores/${value}/products`);
+          }}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Select a store" />
+          </SelectTrigger>
+          <SelectContent>
+            {stores.map((store) => (
+              <SelectItem key={store.id} value={store.id}>
+                {store.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Package className="h-5 w-5 text-blue-600" />
             </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-green-600">Active</div>
-                <div className="mt-1 text-2xl font-semibold text-green-700">{activeProducts.length}</div>
-              </div>
-              <div className="p-2 bg-green-50 rounded-lg">
-                <Package className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-orange-600">Inactive</div>
-                <div className="mt-1 text-2xl font-semibold text-orange-700">{inactiveProducts.length}</div>
-              </div>
-              <div className="p-2 bg-orange-50 rounded-lg">
-                <Package className="h-5 w-5 text-orange-600" />
-              </div>
+            <div className="ml-4">
+              <h3 className="text-sm font-medium text-gray-500">Total Results</h3>
+              <div className="mt-1 text-2xl font-semibold text-gray-900">{statusCounts.total}</div>
             </div>
           </div>
         </div>
-
-        {/* Main Content */}
-        <div className="flex flex-col gap-4">
-          {/* Filters Section */}
-          {showFilters && (
-            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-              <ProductFilters
-                categories={categories}
-                filters={filters}
-                onFiltersChange={setFilters}
-                onClose={() => setShowFilters(false)}
-              />
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
-          )}
+            <div className="ml-4">
+              <h3 className="text-sm font-medium text-gray-500">Active</h3>
+              <div className="mt-1 text-2xl font-semibold text-gray-900">{statusCounts.active}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-50 rounded-lg">
+              <XCircle className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-sm font-medium text-gray-500">Inactive</h3>
+              <div className="mt-1 text-2xl font-semibold text-gray-900">{statusCounts.inactive}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Products Grid/List */}
-          <div className="flex-1 min-w-0">
-            <ProductListContent
-              loading={loading}
-              storeId={storeId}
-              stores={stores}
-              products={products}
-              filteredProducts={filteredProducts}
-              viewMode={viewMode}
-              onDelete={handleDeleteProduct}
+      {/* Search and Filters */}
+      <div className="flex items-center justify-between">
+        <div className="relative flex-1 max-w-lg">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search products..."
+            className="pl-10 pr-10 py-2 w-full border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear search"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                'p-2 rounded-lg',
+                viewMode === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
+              )}
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                'p-2 rounded-lg',
+                viewMode === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
+              )}
+            >
+              <List className="h-5 w-5" />
+            </button>
+          </div>
+          <Button variant="outline" onClick={() => setShowFilters(true)} className="flex items-center">
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-col gap-4">
+        {/* Filters Section */}
+        {showFilters && (
+          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <ProductFilters
+              categories={categories}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onClose={() => setShowFilters(false)}
             />
           </div>
+        )}
+
+        {/* Products Grid/List */}
+        <div className="flex-1 min-w-0">
+          <ProductListContent
+            loading={loading}
+            storeId={storeId}
+            stores={stores}
+            products={products}
+            filteredProducts={filteredProducts}
+            viewMode={viewMode}
+            onDelete={handleDeleteProduct}
+          />
         </div>
       </div>
     </div>
