@@ -29,8 +29,15 @@ export default function ProductView() {
 
         const { data, error } = await supabase
           .from('products')
-          .select('*')
+          .select(`
+            *,
+            store:stores (
+              id,
+              name
+            )
+          `)
           .eq('id', productId)
+          .eq('store_id', storeId)
           .single();
 
         if (error) throw error;

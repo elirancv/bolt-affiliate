@@ -5,24 +5,9 @@ import { AlertCircle } from 'lucide-react';
 
 const SubscriptionUsage = () => {
   const navigate = useNavigate();
-  const { featureLimits, getCurrentUsage, isLoading } = useSubscription();
-  const [usageData, setUsageData] = useState<Record<string, number>>({});
+  const { featureLimits, isLoading } = useSubscription();
 
-  useEffect(() => {
-    const fetchUsage = async () => {
-      const usage: Record<string, number> = {};
-      for (const featureCode of Object.keys(featureLimits)) {
-        usage[featureCode] = await getCurrentUsage(featureCode);
-      }
-      setUsageData(usage);
-    };
-
-    if (Object.keys(featureLimits).length > 0) {
-      fetchUsage();
-    }
-  }, [featureLimits]);
-
-  if (isLoading) {
+  if (isLoading || !featureLimits) {
     return (
       <div className="animate-pulse bg-gray-100 rounded-lg p-4">
         <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -35,9 +20,9 @@ const SubscriptionUsage = () => {
     );
   }
 
-  const getUsagePercentage = (used: number, limit: number | string) => {
-    if (limit === '-1') return 0; // Unlimited
-    return Math.min((used / Number(limit)) * 100, 100);
+  const getUsagePercentage = (used: number, limit: number) => {
+    if (limit === -1) return 0; // Unlimited
+    return Math.min((used / limit) * 100, 100);
   };
 
   const formatFeatureName = (code: string) => {
@@ -46,8 +31,8 @@ const SubscriptionUsage = () => {
     ).join(' ');
   };
 
-  const formatLimit = (limit: string | number) => {
-    return limit === '-1' ? 'Unlimited' : limit;
+  const formatLimit = (limit: number) => {
+    return limit === -1 ? 'Unlimited' : limit;
   };
 
   return (
@@ -64,8 +49,9 @@ const SubscriptionUsage = () => {
 
       <div className="space-y-4">
         {Object.entries(featureLimits).map(([featureCode, feature]) => {
-          const usage = usageData[featureCode] || 0;
-          const percentage = getUsagePercentage(usage, feature.limit_value);
+          const current = feature.current_value || 0;
+          const limit = feature.limit_value;
+          const percentage = getUsagePercentage(current, limit);
           const isNearLimit = percentage >= 80 && percentage < 100;
           const isAtLimit = percentage >= 100;
 
@@ -76,7 +62,7 @@ const SubscriptionUsage = () => {
                   {formatFeatureName(featureCode)}
                 </span>
                 <span className="text-sm text-gray-500">
-                  {usage} / {formatLimit(feature.limit_value)}
+                  {current} / {formatLimit(limit)}
                 </span>
               </div>
               

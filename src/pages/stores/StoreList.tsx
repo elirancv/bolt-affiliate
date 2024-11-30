@@ -86,7 +86,7 @@ export default function StoreList() {
             icon={StoreIcon}
             actions={
               <button
-                onClick={() => navigate('/stores/create')}
+                onClick={() => navigate('/stores/new')}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -143,7 +143,7 @@ export default function StoreList() {
                 Get started by creating your first affiliate store. You can add products, customize the design, and start earning commissions.
               </p>
               <button
-                onClick={() => navigate('/stores/create')}
+                onClick={() => navigate('/stores/new')}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center space-x-2 shadow-sm"
               >
                 <Plus className="h-5 w-5" />

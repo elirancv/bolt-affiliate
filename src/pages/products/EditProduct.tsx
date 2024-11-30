@@ -13,9 +13,29 @@ export default function EditProduct() {
   const navigate = useNavigate();
   const { storeId, productId } = useParams();
 
+  const handleSubmit = async (data: Partial<Product>) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      await updateProduct(productId, {
+        ...data,
+        store_id: storeId,
+        status: data.status || 'active',
+        is_featured: data.is_featured || false
+      });
+      navigate(`/stores/${storeId}/products`);
+    } catch (err: any) {
+      console.error('Error updating product:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const loadProduct = async () => {
-      if (!productId) return;
+      if (!productId || productId === 'create') return;
       
       try {
         const { data, error } = await supabase
@@ -39,6 +59,49 @@ export default function EditProduct() {
     return <div>Store ID and Product ID are required</div>;
   }
 
+  // For create mode, render the form without loading product data
+  if (productId === 'create') {
+    return (
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="bg-white border-b sticky top-0 z-10 mb-6">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-2 hover:bg-gray-100 rounded-full text-gray-600 hover:text-gray-900"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Create Product</h1>
+                  <p className="text-sm text-gray-500">Add a new product to your store</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(-1)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <ProductForm
+            storeId={storeId}
+            onSubmit={handleSubmit}
+            loading={loading}
+            error={error}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (!product) {
     return (
       <div className="min-h-[400px] flex justify-center items-center">
@@ -49,26 +112,6 @@ export default function EditProduct() {
       </div>
     );
   }
-
-  const handleSubmit = async (data: Partial<Product>) => {
-    setLoading(true);
-    setError('');
-
-    try {
-      await updateProduct(productId, {
-        ...data,
-        store_id: storeId,
-        status: data.status || 'active',
-        is_featured: data.is_featured || false
-      });
-      navigate(`/stores/${storeId}/products`);
-    } catch (err: any) {
-      console.error('Error updating product:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="max-w-5xl mx-auto">

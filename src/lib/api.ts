@@ -374,36 +374,16 @@ export async function getProducts(storeId?: string): Promise<Product[]> {
 
 export async function getCategories(storeId: string): Promise<Category[]> {
   try {
-    // First get predefined categories
-    const { data: predefinedCategories, error: predefinedError } = await supabase
+    // Get all categories
+    const { data: categories, error } = await supabase
       .from('categories')
       .select(`
         id,
-        name,
-        description,
-        type,
-        slug
+        name
       `)
-      .eq('type', 'predefined')
       .order('name');
 
-    if (predefinedError) throw predefinedError;
-
-    // Then get store-specific categories if storeId is provided
-    const { data: customCategories, error: customError } = await supabase
-      .from('categories')
-      .select(`
-        id,
-        name,
-        description,
-        type,
-        slug
-      `)
-      .eq('store_id', storeId)
-      .eq('type', 'custom')
-      .order('name');
-
-    if (customError) throw customError;
+    if (error) throw error;
 
     // Check if there are any featured products
     const { data: featuredProducts, error: featuredError } = await supabase
@@ -415,17 +395,12 @@ export async function getCategories(storeId: string): Promise<Category[]> {
 
     if (featuredError) throw featuredError;
 
-    // Combine all categories
-    const allCategories = [...(predefinedCategories || []), ...(customCategories || [])];
-
     // Add Best Sellers category if there are featured products
+    const allCategories = [...(categories || [])];
     if (featuredProducts && featuredProducts.length > 0) {
       allCategories.push({
         id: 'best-sellers',
-        name: 'Best Sellers',
-        description: 'Featured products',
-        type: 'system',
-        slug: 'best-sellers'
+        name: 'Best Sellers'
       });
     }
 

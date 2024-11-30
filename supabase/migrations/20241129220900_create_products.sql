@@ -5,55 +5,42 @@ CREATE TABLE public.products (
     name TEXT NOT NULL,
     description TEXT,
     price DECIMAL(10,2),
-    image_url TEXT,
+    image_urls TEXT[],
     affiliate_link TEXT,
-    is_active BOOLEAN DEFAULT true,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    category_id UUID REFERENCES public.categories(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    CONSTRAINT product_name_length CHECK (char_length(name) >= 3)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable RLS
+-- Enable Row Level Security
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
--- Create policies
-CREATE POLICY "Users can view products of their stores" ON public.products
-    FOR SELECT TO authenticated
-    USING (EXISTS (
-        SELECT 1 FROM public.stores s
-        WHERE s.id = store_id
-        AND s.user_id = auth.uid()
-    ));
+-- Policy for viewing products (anyone can view active products)
+CREATE POLICY "Anyone can view active products" ON public.products
+    FOR SELECT
+    USING (is_active = true);
 
-CREATE POLICY "Users can create products in their stores" ON public.products
-    FOR INSERT TO authenticated
-    WITH CHECK (EXISTS (
-        SELECT 1 FROM public.stores s
-        WHERE s.id = store_id
-        AND s.user_id = auth.uid()
-    ));
+-- Policy for store owners to manage their products
+CREATE POLICY "Store owners can manage their products" ON public.products
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.stores s
+            WHERE s.id = store_id
+            AND s.user_id = auth.uid()
+        )
+    );
 
-CREATE POLICY "Users can update products in their stores" ON public.products
-    FOR UPDATE TO authenticated
-    USING (EXISTS (
-        SELECT 1 FROM public.stores s
-        WHERE s.id = store_id
-        AND s.user_id = auth.uid()
-    ));
+-- Create indexes
+CREATE INDEX idx_products_store_id ON public.products(store_id);
+CREATE INDEX idx_products_category_id ON public.products(category_id);
 
-CREATE POLICY "Users can delete products in their stores" ON public.products
-    FOR DELETE TO authenticated
-    USING (EXISTS (
-        SELECT 1 FROM public.stores s
-        WHERE s.id = store_id
-        AND s.user_id = auth.uid()
-    ));
-
--- Add updated_at trigger
-CREATE TRIGGER products_updated_at
+-- Create trigger to update updated_at timestamp
+CREATE TRIGGER handle_updated_at
     BEFORE UPDATE ON public.products
     FOR EACH ROW
-    EXECUTE FUNCTION public.handle_updated_at();
+    EXECUTE PROCEDURE public.handle_updated_at();
 
 -- Create function to check product limits before insert
 CREATE OR REPLACE FUNCTION public.check_product_limit()
@@ -102,6 +89,67 @@ CREATE TRIGGER check_product_limit
     FOR EACH ROW
     EXECUTE FUNCTION public.check_product_limit();
 
--- Grant permissions
+-- Create function to create a test product
+CREATE OR REPLACE FUNCTION public.create_test_product(
+    p_store_id UUID,
+    p_name TEXT,
+    p_description TEXT DEFAULT NULL,
+    p_price DECIMAL(10,2) DEFAULT NULL,
+    p_affiliate_link TEXT DEFAULT NULL,
+    p_image_urls TEXT[] DEFAULT NULL
+)
+RETURNS TABLE (
+    product_id UUID,
+    product_name TEXT,
+    product_description TEXT,
+    product_price DECIMAL(10,2),
+    product_image_urls TEXT[],
+    product_affiliate_link TEXT,
+    created_at TIMESTAMP WITH TIME ZONE
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Check if the user owns the store
+    IF NOT EXISTS (
+        SELECT 1 FROM stores s
+        WHERE s.id = p_store_id
+        AND s.user_id = auth.uid()
+    ) THEN
+        RAISE EXCEPTION 'You do not have permission to create products in this store';
+    END IF;
+
+    RETURN QUERY
+    INSERT INTO products (
+        store_id, 
+        name, 
+        description, 
+        price, 
+        affiliate_link,
+        image_urls
+    )
+    VALUES (
+        p_store_id, 
+        p_name, 
+        p_description, 
+        p_price, 
+        p_affiliate_link,
+        p_image_urls
+    )
+    RETURNING 
+        id AS product_id,
+        name AS product_name,
+        description AS product_description,
+        price AS product_price,
+        image_urls AS product_image_urls,
+        affiliate_link AS product_affiliate_link,
+        created_at;
+END;
+$$;
+
+-- Grant necessary permissions
 GRANT ALL ON public.products TO postgres;
 GRANT ALL ON public.products TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_test_product TO authenticated;

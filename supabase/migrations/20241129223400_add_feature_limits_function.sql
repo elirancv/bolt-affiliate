@@ -1,3 +1,6 @@
+-- Drop the existing function first
+DROP FUNCTION IF EXISTS public.get_user_feature_limits_v2();
+
 -- Create or replace the get_user_feature_limits_v2 function
 CREATE OR REPLACE FUNCTION public.get_user_feature_limits_v2()
 RETURNS json
@@ -53,3 +56,6 @@ BEGIN
     RETURN limits;
 END;
 $$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION public.get_user_feature_limits_v2() TO authenticated;

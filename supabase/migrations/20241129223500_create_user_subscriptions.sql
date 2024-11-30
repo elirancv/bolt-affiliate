@@ -1,7 +1,15 @@
+-- Drop existing table if it exists
+DROP TABLE IF EXISTS public.user_subscriptions CASCADE;
+
 -- Create user_subscriptions table
-CREATE TABLE IF NOT EXISTS public.user_subscriptions (
-    id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+CREATE TABLE public.user_subscriptions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
     tier text NOT NULL DEFAULT 'free',
+    active boolean DEFAULT true,
+    start_date timestamp with time zone DEFAULT timezone('utc'::text, now()),
+    billing_period_start timestamp with time zone DEFAULT timezone('utc'::text, now()),
+    billing_period_end timestamp with time zone,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     stripe_customer_id text,
@@ -18,15 +26,20 @@ CREATE TABLE IF NOT EXISTS public.user_subscriptions (
     trial_end timestamp with time zone
 );
 
+-- Create unique index on user_id
+CREATE UNIQUE INDEX user_subscriptions_user_id_idx ON public.user_subscriptions (user_id);
+
 -- Add RLS policies
 ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own subscription" ON public.user_subscriptions;
 CREATE POLICY "Users can view own subscription"
     ON public.user_subscriptions
     FOR SELECT
     TO authenticated
-    USING (auth.uid() = id);
+    USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service role can manage all subscriptions" ON public.user_subscriptions;
 CREATE POLICY "Service role can manage all subscriptions"
     ON public.user_subscriptions
     FOR ALL
@@ -43,16 +56,17 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS handle_updated_at ON public.user_subscriptions;
 CREATE TRIGGER handle_updated_at
     BEFORE UPDATE ON public.user_subscriptions
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_updated_at();
 
 -- Insert default subscription for existing users
-INSERT INTO public.user_subscriptions (id, tier)
+INSERT INTO public.user_subscriptions (user_id, tier)
 SELECT id, 'free'
 FROM auth.users
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (user_id) DO NOTHING;
 
 -- Update get_user_feature_limits_v2 function to handle null subscriptions
 CREATE OR REPLACE FUNCTION public.get_user_feature_limits_v2()
@@ -71,7 +85,7 @@ BEGIN
     -- Get the user's subscription tier
     SELECT tier INTO user_tier
     FROM user_subscriptions
-    WHERE id = user_id;
+    WHERE user_id = user_id;
 
     -- Set default tier if none found
     IF user_tier IS NULL THEN

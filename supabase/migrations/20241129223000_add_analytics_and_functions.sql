@@ -2,100 +2,67 @@
 DROP FUNCTION IF EXISTS public.get_user_feature_limits_v2();
 DROP FUNCTION IF EXISTS public.get_top_products_with_clicks(INTEGER);
 
--- Create analytics table
-CREATE TABLE IF NOT EXISTS public.analytics (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-    product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
-    date DATE NOT NULL DEFAULT CURRENT_DATE,
-    views INTEGER DEFAULT 0,
-    clicks INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Add indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_analytics_store_id ON public.analytics(store_id);
-CREATE INDEX IF NOT EXISTS idx_analytics_product_id ON public.analytics(product_id);
-CREATE INDEX IF NOT EXISTS idx_analytics_date ON public.analytics(date);
-
--- Add RLS policies for analytics
-ALTER TABLE public.analytics ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own analytics"
-    ON public.analytics
-    FOR SELECT
-    USING (
-        store_id IN (
-            SELECT id FROM stores 
-            WHERE user_id = auth.uid()
-        )
-    );
-
-CREATE POLICY "Users can insert their own analytics"
-    ON public.analytics
-    FOR INSERT
-    WITH CHECK (
-        store_id IN (
-            SELECT id FROM stores 
-            WHERE user_id = auth.uid()
-        )
-    );
-
--- Create function to get top products with clicks
-CREATE OR REPLACE FUNCTION public.get_top_products_with_clicks(
-    p_days INTEGER DEFAULT 7
-)
+-- Create function to get top products by clicks
+CREATE OR REPLACE FUNCTION public.get_top_products_with_clicks(p_limit INTEGER DEFAULT 10)
 RETURNS TABLE (
     product_id UUID,
     product_name TEXT,
-    store_id UUID,
-    store_name TEXT,
-    total_views INTEGER,
-    total_clicks INTEGER,
-    conversion_rate DECIMAL
+    total_clicks BIGINT,
+    total_views BIGINT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
-    WITH product_stats AS (
-        SELECT 
-            a.product_id,
-            p.name as product_name,
-            s.id as store_id,
-            s.name as store_name,
-            SUM(a.views) as total_views,
-            SUM(a.clicks) as total_clicks
-        FROM analytics a
-        JOIN products p ON a.product_id = p.id
-        JOIN stores s ON p.store_id = s.id
-        WHERE 
-            s.user_id = auth.uid()
-            AND a.date >= CURRENT_DATE - p_days
-        GROUP BY 
-            a.product_id,
-            p.name,
-            s.id,
-            s.name
+    SELECT 
+        p.id AS product_id,
+        p.name AS product_name,
+        COALESCE(SUM(a.clicks), 0)::BIGINT AS total_clicks,
+        COALESCE(SUM(a.views), 0)::BIGINT AS total_views
+    FROM public.products p
+    LEFT JOIN public.analytics a ON p.id = a.product_id
+    WHERE p.store_id IN (
+        SELECT id FROM public.stores 
+        WHERE user_id = auth.uid()
+    )
+    GROUP BY p.id, p.name
+    ORDER BY total_clicks DESC, total_views DESC
+    LIMIT p_limit;
+END;
+$$;
+
+-- Create function to get analytics summary
+CREATE OR REPLACE FUNCTION public.get_analytics_summary(
+    p_start_date DATE DEFAULT CURRENT_DATE - INTERVAL '30 days',
+    p_end_date DATE DEFAULT CURRENT_DATE
+)
+RETURNS TABLE (
+    date DATE,
+    total_views BIGINT,
+    total_clicks BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH dates AS (
+        SELECT generate_series(p_start_date::date, p_end_date::date, '1 day'::interval)::date AS date
     )
     SELECT 
-        ps.product_id,
-        ps.product_name,
-        ps.store_id,
-        ps.store_name,
-        ps.total_views,
-        ps.total_clicks,
-        CASE 
-            WHEN ps.total_views > 0 
-            THEN ROUND((ps.total_clicks::DECIMAL / ps.total_views * 100)::DECIMAL, 2)
-            ELSE 0::DECIMAL 
-        END as conversion_rate
-    FROM product_stats ps
-    ORDER BY ps.total_clicks DESC, ps.total_views DESC
-    LIMIT 10;
+        d.date,
+        COALESCE(SUM(a.views), 0)::BIGINT AS total_views,
+        COALESCE(SUM(a.clicks), 0)::BIGINT AS total_clicks
+    FROM dates d
+    LEFT JOIN public.analytics a ON d.date = a.date
+    WHERE a.store_id IN (
+        SELECT id FROM public.stores 
+        WHERE user_id = auth.uid()
+    )
+    OR a.store_id IS NULL
+    GROUP BY d.date
+    ORDER BY d.date;
 END;
 $$;
 
@@ -163,17 +130,3 @@ BEGIN
     END CASE;
 END;
 $$;
-
--- Add trigger to update updated_at timestamp
-CREATE OR REPLACE FUNCTION public.update_analytics_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = timezone('utc'::text, now());
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_analytics_updated_at
-    BEFORE UPDATE ON public.analytics
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_analytics_updated_at();

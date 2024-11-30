@@ -60,60 +60,40 @@ BEGIN
 END;
 $$;
 
--- Drop and recreate analytics policies
-DROP POLICY IF EXISTS "Users can view their own analytics" ON public.analytics;
-DROP POLICY IF EXISTS "Users can insert their own analytics" ON public.analytics;
+-- Create function to get analytics by product
+CREATE OR REPLACE FUNCTION public.get_analytics_by_product(
+    p_product_id UUID,
+    p_start_date DATE DEFAULT CURRENT_DATE - INTERVAL '30 days',
+    p_end_date DATE DEFAULT CURRENT_DATE
+)
+RETURNS TABLE (
+    date DATE,
+    views INTEGER,
+    clicks INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Check if user has access to the product
+    IF NOT EXISTS (
+        SELECT 1 FROM public.products p
+        JOIN public.stores s ON p.store_id = s.id
+        WHERE p.id = p_product_id AND s.user_id = auth.uid()
+    ) THEN
+        RAISE EXCEPTION 'Access denied';
+    END IF;
 
--- Add updated RLS policies for analytics
-CREATE POLICY "Users can view their own analytics"
-    ON public.analytics
-    FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM stores s
-            WHERE s.id = analytics.store_id
-            AND s.user_id = auth.uid()
-        )
-    );
-
-CREATE POLICY "Users can insert their own analytics"
-    ON public.analytics
-    FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM stores s
-            WHERE s.id = analytics.store_id
-            AND s.user_id = auth.uid()
-        )
-    );
-
--- Add policy for updating analytics
-CREATE POLICY "Users can update their own analytics"
-    ON public.analytics
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM stores s
-            WHERE s.id = analytics.store_id
-            AND s.user_id = auth.uid()
-        )
+    RETURN QUERY
+    WITH dates AS (
+        SELECT generate_series(p_start_date::date, p_end_date::date, '1 day'::interval)::date AS date
     )
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM stores s
-            WHERE s.id = analytics.store_id
-            AND s.user_id = auth.uid()
-        )
-    );
-
--- Add policy for deleting analytics
-CREATE POLICY "Users can delete their own analytics"
-    ON public.analytics
-    FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM stores s
-            WHERE s.id = analytics.store_id
-            AND s.user_id = auth.uid()
-        )
-    );
+    SELECT 
+        d.date,
+        COALESCE(a.views, 0) AS views,
+        COALESCE(a.clicks, 0) AS clicks
+    FROM dates d
+    LEFT JOIN public.analytics a ON d.date = a.date AND a.product_id = p_product_id
+    ORDER BY d.date;
+END;
+$$;

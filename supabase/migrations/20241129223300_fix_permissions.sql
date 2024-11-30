@@ -1,35 +1,34 @@
 -- Grant execute permission for get_user_feature_limits_v2
 GRANT EXECUTE ON FUNCTION public.get_user_feature_limits_v2() TO authenticated;
 
--- Drop and recreate analytics policies with better array handling
-DROP POLICY IF EXISTS "Analytics access policy" ON public.analytics;
+-- Fix store policies
+DROP POLICY IF EXISTS "Store access policy" ON public.stores;
 
-ALTER TABLE public.analytics DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.analytics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Store access policy"
+    ON public.stores
+    AS PERMISSIVE
+    FOR ALL
+    TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
--- Add updated RLS policies for analytics with array support
-CREATE POLICY "Analytics access policy"
-    ON public.analytics
+-- Fix product policies
+DROP POLICY IF EXISTS "Product access policy" ON public.products;
+
+CREATE POLICY "Product access policy"
+    ON public.products
     AS PERMISSIVE
     FOR ALL
     TO authenticated
     USING (
-        EXISTS (
-            SELECT 1 FROM stores 
-            WHERE stores.id = analytics.store_id 
-            AND stores.user_id = auth.uid()
+        store_id IN (
+            SELECT id FROM public.stores 
+            WHERE user_id = auth.uid()
         )
     )
     WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM stores 
-            WHERE stores.id = analytics.store_id 
-            AND stores.user_id = auth.uid()
+        store_id IN (
+            SELECT id FROM public.stores 
+            WHERE user_id = auth.uid()
         )
     );
-
--- Grant permissions on analytics table
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.analytics TO authenticated;
-
--- Grant execute permission for get_top_products_with_clicks
-GRANT EXECUTE ON FUNCTION public.get_top_products_with_clicks(TIMESTAMP WITH TIME ZONE, UUID[]) TO authenticated;

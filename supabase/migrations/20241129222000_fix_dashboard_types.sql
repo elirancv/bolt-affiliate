@@ -18,7 +18,11 @@ SET search_path = public
 AS $$
 DECLARE
     v_limits public.feature_limits;
+    v_user_id uuid;
 BEGIN
+    -- Get the authenticated user's ID
+    v_user_id := auth.uid();
+
     -- Get user's feature limits
     v_limits := public.get_user_feature_limits_v2();
 
@@ -35,7 +39,7 @@ BEGIN
         LEFT JOIN products p ON s.id = p.store_id
         LEFT JOIN product_views pv ON p.id = pv.product_id
         LEFT JOIN product_clicks pc ON p.id = pc.product_id
-        WHERE s.user_id = auth.uid()
+        WHERE s.user_id = v_user_id
     )
     SELECT 
         m.total_stores,
@@ -54,6 +58,9 @@ BEGIN
         v_limits.max_stores * v_limits.max_products_per_store
     FROM metrics m
     CROSS JOIN users u
-    WHERE u.id = auth.uid();
+    WHERE u.id = v_user_id;
 END;
 $$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION public.get_user_dashboard_summary() TO authenticated;

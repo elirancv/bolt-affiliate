@@ -2,11 +2,15 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { PostgrestError } from '@supabase/supabase-js';
 import { debounce } from 'lodash';
+import { logger } from '../lib/logger';
 
 export interface FeatureLimits {
   max_stores: number;
   total_products_limit: number;
   analytics_retention_days: number;
+  current_stores?: number;
+  current_products?: number;
+  current_analytics_days?: number;
 }
 
 export interface Subscription {
@@ -30,6 +34,8 @@ interface SubscriptionStore {
   fetchFeatureLimits: () => Promise<FeatureLimits | null>;
   isWithinLimits: (type: 'stores' | 'products', currentCount: number) => boolean;
   getRemainingLimit: (type: 'stores' | 'products', currentCount: number) => number;
+  setSubscription: (subscription: Subscription | null) => void;
+  setFeatureLimits: (limits: FeatureLimits | null) => void;
 }
 
 export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
@@ -38,87 +44,73 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   isLoading: false,
   error: null,
 
-  fetchCurrentSubscription: debounce(async () => {
-    if (get().isLoading) return null; // Prevent concurrent fetches
-    
-    set({ isLoading: true, error: null });
+  setSubscription: (subscription: Subscription | null) => set({ subscription }),
+  setFeatureLimits: (limits: FeatureLimits | null) => set({ featureLimits: limits }),
+
+  fetchCurrentSubscription: async () => {
     try {
+      logger.debug('Fetching current subscription');
       const { data, error } = await supabase.rpc('get_current_subscription');
+      
       if (error) {
-        set({ 
-          error: error as PostgrestError, 
-          isLoading: false,
-          subscription: null 
-        });
+        logger.error('Error fetching subscription:', error);
+        set({ error: error as PostgrestError });
         return null;
       }
       
-      // Data will be an array with one row
       const subscription = data?.[0] || null;
-      const currentSub = get().subscription;
+      logger.debug('Subscription fetched:', { subscription });
       
-      // Only update if the subscription has actually changed
-      if (JSON.stringify(subscription) !== JSON.stringify(currentSub)) {
-        set({ 
-          subscription, 
-          error: null,
-          isLoading: false 
-        });
-      } else {
-        set({ isLoading: false });
-      }
-      
+      set({ subscription, error: null });
       return subscription;
     } catch (error) {
-      set({ 
-        error: error as PostgrestError,
-        isLoading: false,
-        subscription: null 
-      });
+      logger.error('Error in fetchCurrentSubscription:', error);
+      set({ error: error as PostgrestError, subscription: null });
       return null;
     }
-  }, 500),
+  },
 
-  fetchFeatureLimits: debounce(async () => {
-    if (get().isLoading) return null; // Prevent concurrent fetches
-    
-    set({ isLoading: true, error: null });
+  fetchFeatureLimits: async () => {
     try {
-      const { data, error } = await supabase.rpc('get_user_feature_limits');
-      if (error) {
-        set({ 
-          error: error as PostgrestError, 
-          isLoading: false,
-          featureLimits: null 
-        });
+      set({ isLoading: true });
+      logger.debug('Fetching feature limits');
+
+      // Fetch feature limits and usage in one call
+      const { data: usageData, error: usageError } = await supabase.rpc('get_user_dashboard_summary');
+      
+      if (usageError) {
+        logger.error('Error fetching usage data:', usageError);
+        set({ error: usageError as PostgrestError, isLoading: false });
         return null;
       }
-      
-      // Data will be an array with one row
-      const featureLimits = data?.[0] || null;
-      const currentLimits = get().featureLimits;
-      
-      // Only update if the limits have actually changed
-      if (JSON.stringify(featureLimits) !== JSON.stringify(currentLimits)) {
-        set({ 
-          featureLimits, 
-          error: null,
-          isLoading: false 
-        });
-      } else {
+
+      const usage = usageData?.[0];
+      if (!usage) {
+        logger.error('No usage data found');
         set({ isLoading: false });
+        return null;
       }
+
+      // Create feature limits object from the dashboard summary
+      const limits: FeatureLimits = {
+        max_stores: usage.stores_limit,
+        total_products_limit: usage.products_limit,
+        analytics_retention_days: 30, // Default to 30 days for now
+        current_stores: usage.total_stores,
+        current_products: usage.total_products,
+        current_analytics_days: 0 // We'll implement this later
+      };
       
-      return featureLimits;
+      logger.debug('Feature limits and usage fetched:', { limits, usage });
+      
+      set({ featureLimits: limits, error: null, isLoading: false });
+      return limits;
     } catch (error) {
-      set({ 
-        error: error as PostgrestError,
-        isLoading: false,
-        featureLimits: null 
-      });
+      logger.error('Error in fetchFeatureLimits:', error);
+      set({ error: error as PostgrestError, featureLimits: null, isLoading: false });
       return null;
     }
-  }, 500),
+  },
 
   isWithinLimits: (type: 'stores' | 'products', currentCount: number) => {
     const { featureLimits } = get();
@@ -146,5 +138,5 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
       default:
         return 0;
     }
-  },
+  }
 }));
