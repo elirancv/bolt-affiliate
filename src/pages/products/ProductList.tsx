@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { getStores, getProducts, deleteProduct } from '../../lib/api';
+import { getStores, getProducts, deleteProduct, getCategories } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { ProductListHeader } from '../../components/products/ProductListHeader';
 import { ProductListStats } from '../../components/products/ProductListStats';
@@ -32,14 +32,15 @@ export default function ProductList() {
     maxPrice: '',
   });
 
-  // Fetch stores and products
+  // Fetch stores, products, and categories
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     
     const loadData = async () => {
       try {
         // First load stores
         const storesData = await getStores(user.id);
+        console.log('Loaded stores:', storesData);
         setStores(storesData);
 
         // If no storeId is selected but we have stores, redirect to the first store
@@ -48,14 +49,40 @@ export default function ProductList() {
           return;
         }
 
-        // If we have a storeId, load its products
+        // If we have a storeId, load its products and categories
         if (storeId) {
           setLoading(true);
-          const productsData = await getProducts(storeId);
+          console.log('Loading data for store:', storeId);
+          
+          const [productsData, categoriesData] = await Promise.all([
+            getProducts(storeId),
+            getCategories(storeId)
+          ]);
+          
+          console.log('Loaded products:', productsData);
+          console.log('Loaded categories:', categoriesData);
+          
           setProducts(productsData);
           setFilteredProducts(productsData);
+          
+          // Filter categories to only include those that have products
+          const categoriesWithProducts = categoriesData.filter(category => {
+            if (category.type === 'system' && category.id === 'best-sellers') {
+              // Include Best Sellers if there are featured products
+              return productsData.some(product => product.is_featured);
+            }
+            // For other categories, check if any product has this category
+            return productsData.some(product => 
+              product.category_id === category.id || 
+              (product.categories && product.categories.id === category.id)
+            );
+          });
+          
+          console.log('Categories with products:', categoriesWithProducts);
+          setCategories(categoriesWithProducts);
         }
       } catch (error: any) {
+        console.error('Error in loadData:', error);
         toast.error('Error loading data: ' + error.message);
       } finally {
         setLoading(false);
@@ -63,26 +90,13 @@ export default function ProductList() {
     };
 
     loadData();
-  }, [user, storeId, navigate]);
-
-  // Extract unique categories from products
-  useEffect(() => {
-    const uniqueCategories = products.reduce((acc, product) => {
-      if (product.category && !acc.some(cat => cat.id === product.category.id)) {
-        acc.push({
-          id: product.category.id,
-          name: product.category.name
-        });
-      }
-      return acc;
-    }, [] as { id: string; name: string }[]);
-    
-    setCategories(uniqueCategories);
-  }, [products]);
+  }, [user?.id, storeId]);
 
   // Apply filters and search
   useEffect(() => {
     let filtered = [...products];
+    console.log('Starting filter with products:', filtered.length);
+    console.log('Current filters:', filters);
 
     // Apply search
     if (searchQuery.trim()) {
@@ -92,39 +106,57 @@ export default function ProductList() {
         const description = (product.description || '').toLowerCase();
         return title.includes(query) || description.includes(query);
       });
+      console.log('After search filter:', filtered.length);
     }
 
     // Apply filters
     if (filters.status.length > 0) {
       filtered = filtered.filter(product => filters.status.includes(product.status));
+      console.log('After status filter:', filtered.length);
     }
+    
     if (filters.category.length > 0) {
-      filtered = filtered.filter(product => filters.category.includes(product.category?.id));
+      console.log('Applying category filters:', filters.category);
+      filtered = filtered.filter(product => {
+        // Handle Best Sellers category
+        if (filters.category.includes('best-sellers')) {
+          return product.is_featured === true;
+        }
+        // Handle regular categories
+        return filters.category.some(categoryId => 
+          product.category_id === categoryId || 
+          (product.categories && product.categories.id === categoryId)
+        );
+      });
+      console.log('After category filter:', filtered.length);
     }
+
     if (filters.minPrice) {
       filtered = filtered.filter(product => 
         product.price && parseFloat(product.price) >= parseFloat(filters.minPrice)
       );
+      console.log('After minPrice filter:', filtered.length);
     }
     if (filters.maxPrice) {
       filtered = filtered.filter(product => 
         product.price && parseFloat(product.price) <= parseFloat(filters.maxPrice)
       );
+      console.log('After maxPrice filter:', filtered.length);
     }
 
     setFilteredProducts(filtered);
   }, [products, filters, searchQuery]);
 
-  const activeProducts = products.filter(product => product.status === 'active');
-  const inactiveProducts = products.filter(product => product.status === 'inactive');
-
-  console.log('Product status debug:', {
-    allProducts: products.map(p => ({ id: p.id, name: p.name, status: p.status })),
-    activeCount: activeProducts.length,
-    inactiveCount: inactiveProducts.length,
-    activeProducts: activeProducts.map(p => ({ id: p.id, name: p.name })),
-    inactiveProducts: inactiveProducts.map(p => ({ id: p.id, name: p.name }))
-  });
+  // Memoize filtered products
+  const activeProducts = useMemo(() => 
+    products.filter(product => product.status === 'active'),
+    [products]
+  );
+  
+  const inactiveProducts = useMemo(() => 
+    products.filter(product => product.status === 'inactive'),
+    [products]
+  );
 
   const handleDeleteProduct = async (productId: string) => {
     try {

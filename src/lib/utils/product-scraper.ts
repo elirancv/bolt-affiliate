@@ -1,30 +1,23 @@
-import { ParsedProduct, Marketplace } from '../../types';
 import { scrapeAmazonProduct } from './amazon-scraper';
+import { ParsedProduct } from '../../types';
 
-export async function scrapeProduct(url: string, marketplace: Marketplace): Promise<Partial<ParsedProduct>> {
-  console.log('Scraping product:', { url, marketplace });
-  
-  // Ensure marketplace is lowercase
-  const normalizedMarketplace = marketplace.toLowerCase() as Marketplace;
-  
-  switch (normalizedMarketplace) {
+export async function scrapeProduct(url: string, marketplace: string): Promise<Partial<ParsedProduct>> {
+  switch (marketplace.toLowerCase()) {
     case 'amazon':
-      console.log('Using Amazon scraper');
-      const result = await scrapeAmazonProduct(url);
-      console.log('Amazon scraper result:', result);
-      return result;
-    case 'aliexpress':
-      console.log('AliExpress scraping not implemented yet');
-      return {};
+      return await scrapeAmazonProduct(url);
     default:
-      console.log('Unknown marketplace:', marketplace);
-      return {};
+      return {
+        error: 'Unsupported marketplace'
+      };
   }
 }
 
-// Helper function to check if a URL is from a supported marketplace
-export function isSupportedMarketplace(url: string): boolean {
-  const isSupported = url.includes('amazon.com') || url.includes('aliexpress.com');
-  console.log('Checking if URL is supported:', { url, isSupported });
-  return isSupported;
+export function isSupportedMarketplace(marketplace: string): boolean {
+  return ['amazon'].includes(marketplace.toLowerCase());
+}
+
+export async function isUrlSupported(url: string): Promise<boolean> {
+  // Amazon URL patterns
+  const amazonPattern = /amazon\.com.*\/[A-Z0-9]{10}(?:\/|\?|$)/;
+  return amazonPattern.test(url);
 }

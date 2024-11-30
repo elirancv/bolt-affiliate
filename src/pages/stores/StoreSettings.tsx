@@ -1,24 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStoreForm } from '../../hooks/useStoreForm';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { Label } from '../../components/ui/Label';
-import { Switch } from '../../components/ui/Switch';
-import { Input } from '../../components/ui/Input';
+import { Settings, AlertCircle, Save } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Card } from '../../components/ui/card';
 import PageHeader from '../../components/ui/PageHeader';
-import {
-  ArrowLeft,
-  Save,
-  Facebook,
-  Instagram,
-  Phone,
-  MapPin,
-  MessagesSquare,
-  AlertCircle,
-  Settings,
-} from 'lucide-react';
+import { deleteStore } from '../../lib/api';
+import { toast } from 'sonner';
+import { Switch } from '../../components/ui/Switch';
+import { ArrowLeft, Facebook, Instagram, Phone, MapPin, MessagesSquare } from 'lucide-react';
 
 const SOCIAL_PLATFORMS = [
   {
@@ -54,15 +47,17 @@ const SOCIAL_PLATFORMS = [
 ];
 
 const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: -10 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-  transition: { duration: 0.2 },
+  exit: { opacity: 0, y: -10 },
+  transition: { duration: 0.2 }
 };
 
 export default function StoreSettings() {
   const { storeId } = useParams();
   const navigate = useNavigate();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     formData,
@@ -79,6 +74,24 @@ export default function StoreSettings() {
       // The user can manually go back using the back button
     },
   });
+
+  const handleDeleteStore = async () => {
+    if (!storeId) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteStore(storeId);
+      toast.success('Store deleted successfully');
+      navigate('/stores');
+    } catch (err: any) {
+      toast.error('Error', {
+        description: err.message
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -328,7 +341,57 @@ export default function StoreSettings() {
             </div>
           </Card>
         </motion.div>
+
+        {/* Delete Store Section */}
+        <motion.div {...fadeInUp}>
+          <Card>
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-red-600 mb-4">
+                Danger Zone
+              </h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Once you delete a store, there is no going back. Please be certain.
+              </p>
+              <Button
+                variant="destructive"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Store
+              </Button>
+            </div>
+          </Card>
+        </motion.div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Store</h3>
+            <p className="text-gray-500 mb-4">
+              Are you sure you want to delete this store? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteStore}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Store'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

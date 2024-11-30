@@ -9,17 +9,22 @@ export async function createStore(store: Omit<Store, 'id' | 'created_at' | 'upda
       throw new Error('User not authenticated');
     }
 
+    // Create store with required fields only
     const { data, error } = await supabase
       .from('stores')
       .insert([{
-        ...store,
-        user_id: session.session.user.id,
-        status: 'active'
+        user_id: store.user_id,
+        name: store.name,
+        description: store.description,
+        is_active: true
       }])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Store creation error:', error);
+      throw new Error('Failed to create store: ' + error.message);
+    }
     return data;
   } catch (error) {
     console.error('Error creating store:', error);
@@ -74,29 +79,55 @@ export async function getStores(userId: string) {
 
 export async function getStore(storeId: string) {
   try {
+    // Get store basic info with products count
     const { data: store, error: storeError } = await supabase
       .from('stores')
-      .select('*')
+      .select(`
+        *,
+        products(count)
+      `)
       .eq('id', storeId)
       .single();
 
-    if (storeError) throw storeError;
+    if (storeError) {
+      console.error('Store fetch error:', storeError);
+      throw storeError;
+    }
 
-    // Get store metrics
-    const { data: metrics, error: metricsError } = await supabase
-      .from('store_metrics')
+    // Get product clicks from the view
+    const { data: clicksData, error: clicksError } = await supabase
+      .from('product_clicks_view')
+      .select('*')
+      .eq('store_id', storeId);
+
+    if (clicksError) {
+      console.error('Clicks fetch error:', clicksError);
+    }
+
+    // Get analytics data for the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const { data: analytics, error: analyticsError } = await supabase
+      .from('analytics')
       .select('*')
       .eq('store_id', storeId)
-      .single();
+      .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
 
-    if (metricsError && metricsError.code !== 'PGRST116') throw metricsError;
+    if (analyticsError) {
+      console.error('Analytics fetch error:', analyticsError);
+    }
+
+    // Calculate metrics
+    const totalClicks = clicksData?.length || 0;
+    const totalCommission = analytics?.reduce((sum, record) => sum + (record.commission || 0), 0) || 0;
 
     return {
       ...store,
-      productsCount: metrics?.product_count || 0,
-      totalClicks: metrics?.click_count || 0,
-      totalCommission: metrics?.total_commission || 0,
-      approvedCommissions: metrics?.approved_commissions || 0
+      productsCount: store.products?.[0]?.count || 0,
+      totalClicks: totalClicks,
+      totalCommission: totalCommission,
+      approvedCommissions: 0 // This will be implemented later
     };
   } catch (error) {
     console.error('Error getting store:', error);
@@ -106,19 +137,21 @@ export async function getStore(storeId: string) {
 
 export async function getPublicStore(storeId: string) {
   try {
-    console.log('Fetching public store:', storeId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Fetching public store:', storeId);
+    }
     
     // First, try to get the store without any filters to see if it exists
     const { data: rawStore, error: rawError } = await supabase
       .from('stores')
-      .select('id, name, status')
+      .select('id, name, is_active')
       .eq('id', storeId)
       .single()
-      .returns<{ id: string; name: string; status: string } | null>();
+      .returns<{ id: string; name: string; is_active: boolean } | null>();
 
     if (rawError) {
       console.error('Error checking store existence:', rawError);
-    } else {
+    } else if (process.env.NODE_ENV === 'development') {
       console.log('Raw store data:', rawStore);
     }
 
@@ -127,7 +160,7 @@ export async function getPublicStore(storeId: string) {
       .from('stores')
       .select('*')
       .eq('id', storeId)
-      .eq('status', 'active')
+      .eq('is_active', true)
       .single()
       .returns<Store | null>();
 
@@ -145,12 +178,14 @@ export async function getPublicStore(storeId: string) {
     if (!store) {
       console.error('Store not found or not active:', storeId);
       if (rawStore) {
-        console.log('Store exists but might be inactive. Status:', rawStore.status);
+        console.log('Store exists but might be inactive. Status:', rawStore.is_active);
       }
       throw new Error('Store not found or not accessible');
     }
 
-    console.log('Successfully found active store:', store.id, store.name);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Successfully found active store:', store.id, store.name);
+    }
     return store;
   } catch (error) {
     console.error('Error getting public store:', error);
@@ -160,7 +195,9 @@ export async function getPublicStore(storeId: string) {
 
 export async function getPublicProducts(storeId: string) {
   try {
-    console.log('Fetching public products for store:', storeId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Fetching public products for store:', storeId);
+    }
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
@@ -173,7 +210,9 @@ export async function getPublicProducts(storeId: string) {
       throw error;
     }
 
-    console.log(`Found ${products?.length || 0} products`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Found ${products?.length || 0} products`);
+    }
     return products || [];
   } catch (error) {
     console.error('Error getting public products:', error);
@@ -183,7 +222,9 @@ export async function getPublicProducts(storeId: string) {
 
 export async function getPublicCategories(storeId: string) {
   try {
-    console.log('Fetching public categories for store:', storeId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Fetching public categories for store:', storeId);
+    }
     const { data: categories, error } = await supabase
       .from('categories')
       .select('*')
@@ -195,7 +236,9 @@ export async function getPublicCategories(storeId: string) {
       throw error;
     }
 
-    console.log(`Found ${categories?.length || 0} categories`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Found ${categories?.length || 0} categories`);
+    }
     return categories || [];
   } catch (error) {
     console.error('Error getting public categories:', error);
@@ -205,26 +248,32 @@ export async function getPublicCategories(storeId: string) {
 
 export async function updateStore(storeId: string, updates: Partial<Store>) {
   try {
-    // Remove computed fields that shouldn't be updated
-    const { productsCount, totalClicks, totalCommission, approvedCommissions, ...updateData } = updates as any;
+    // Remove computed fields and non-existent fields that shouldn't be updated
+    const {
+      productsCount,
+      totalClicks,
+      totalCommission,
+      approvedCommissions,
+      products,
+      metrics,
+      social_links,
+      promotion_settings,
+      ...updateData
+    } = updates as any;
     
-    // Ensure social_links is an object
-    if (!updateData.social_links) {
-      updateData.social_links = {};
-    }
-
-    // Only set promotion_settings if it exists in the update
-    if (updateData.promotion_settings) {
-      updateData.promotion_settings = {
-        ...updateData.promotion_settings
-      };
-    }
+    // Only keep fields that exist in the stores table
+    const validFields = {
+      name: updateData.name,
+      description: updateData.description,
+      is_active: updateData.is_active,
+      updated_at: new Date().toISOString()
+    };
 
     const { data, error } = await supabase
       .from('stores')
-      .update(updateData)
+      .update(validFields)
       .eq('id', storeId)
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -247,6 +296,7 @@ export async function deleteStore(storeId: string) {
       .eq('id', storeId);
 
     if (error) throw error;
+    return true;
   } catch (error) {
     console.error('Error deleting store:', error);
     throw error;
@@ -255,7 +305,9 @@ export async function deleteStore(storeId: string) {
 
 export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
   try {
-    console.log('Creating product with data:', data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Creating product with data:', data);
+    }
     const { data: newProduct, error } = await supabase
       .from('products')
       .insert([{
@@ -273,7 +325,9 @@ export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'u
       throw error;
     }
 
-    console.log('Product created successfully:', newProduct);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Product created successfully:', newProduct);
+    }
     return newProduct;
   } catch (error) {
     console.error('Error creating product:', error);
@@ -283,7 +337,6 @@ export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'u
 
 export async function getProducts(storeId?: string): Promise<Product[]> {
   try {
-    console.log('Fetching products for store:', storeId);
     let query = supabase
       .from('products')
       .select(`
@@ -291,6 +344,13 @@ export async function getProducts(storeId?: string): Promise<Product[]> {
         stores (
           id,
           name
+        ),
+        categories (
+          id,
+          name,
+          description,
+          type,
+          slug
         )
       `);
 
@@ -301,12 +361,8 @@ export async function getProducts(storeId?: string): Promise<Product[]> {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching products:', error);
       throw error;
     }
-
-    console.log('Fetched products raw data:', data);
-    console.log('Products with status:', data?.map(p => ({ id: p.id, name: p.name, status: p.status, is_featured: p.is_featured })));
 
     return data || [];
   } catch (error) {
@@ -325,13 +381,7 @@ export async function getCategories(storeId: string): Promise<Category[]> {
         name,
         description,
         type,
-        slug,
-        products:products_categories(
-          product:products(
-            id,
-            name
-          )
-        )
+        slug
       `)
       .eq('type', 'predefined')
       .order('name');
@@ -346,13 +396,7 @@ export async function getCategories(storeId: string): Promise<Category[]> {
         name,
         description,
         type,
-        slug,
-        products:products_categories(
-          product:products(
-            id,
-            name
-          )
-        )
+        slug
       `)
       .eq('store_id', storeId)
       .eq('type', 'custom')
@@ -360,12 +404,31 @@ export async function getCategories(storeId: string): Promise<Category[]> {
 
     if (customError) throw customError;
 
-    // Combine and return all categories
+    // Check if there are any featured products
+    const { data: featuredProducts, error: featuredError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('store_id', storeId)
+      .eq('is_featured', true)
+      .limit(1);
+
+    if (featuredError) throw featuredError;
+
+    // Combine all categories
     const allCategories = [...(predefinedCategories || []), ...(customCategories || [])];
-    return allCategories.map(category => ({
-      ...category,
-      productCount: category.products?.length || 0
-    }));
+
+    // Add Best Sellers category if there are featured products
+    if (featuredProducts && featuredProducts.length > 0) {
+      allCategories.push({
+        id: 'best-sellers',
+        name: 'Best Sellers',
+        description: 'Featured products',
+        type: 'system',
+        slug: 'best-sellers'
+      });
+    }
+
+    return allCategories;
   } catch (error) {
     console.error('Error getting categories:', error);
     throw error;
@@ -469,7 +532,9 @@ export async function updateProductCategories(productId: string, categoryIds: st
 
 export async function updateProduct(productId: string, data: Partial<Product>) {
   try {
-    console.log('Updating product:', productId, 'with data:', data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Updating product:', productId, 'with data:', data);
+    }
     const { error } = await supabase
       .from('products')
       .update({
@@ -483,7 +548,9 @@ export async function updateProduct(productId: string, data: Partial<Product>) {
       throw error;
     }
 
-    console.log('Product updated successfully');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Product updated successfully');
+    }
   } catch (error) {
     console.error('Error updating product:', error);
     throw error;
@@ -544,7 +611,9 @@ export async function checkSchema(product: Omit<Product, 'id' | 'created_at' | '
       throw error;
     }
 
-    console.log('Schema check result:', data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Schema check result:', data);
+    }
     return data;
   } catch (error) {
     console.error('Error checking schema:', error);
@@ -556,6 +625,7 @@ export async function trackPageView(storeId: string) {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   try {
+    // First try to increment page views
     const { error: analyticsError } = await supabase.rpc(
       'increment_page_views',
       { 
@@ -564,7 +634,23 @@ export async function trackPageView(storeId: string) {
       }
     );
 
-    if (analyticsError) throw analyticsError;
+    // If the function doesn't exist, fall back to direct table insert/update
+    if (analyticsError?.message?.includes('Could not find the function')) {
+      const { error: insertError } = await supabase
+        .from('analytics')
+        .upsert({
+          store_id: storeId,
+          date: today,
+          page_views: 1
+        }, {
+          onConflict: 'store_id,date',
+          count: 'exact'
+        });
+
+      if (insertError) throw insertError;
+    } else if (analyticsError) {
+      throw analyticsError;
+    }
 
     // Update store metrics
     const { error: metricsError } = await supabase.rpc(
@@ -572,12 +658,16 @@ export async function trackPageView(storeId: string) {
       { store_id: storeId }
     );
 
-    if (metricsError) throw metricsError;
+    if (metricsError) {
+      console.error('Error refreshing store metrics:', metricsError);
+      // Don't throw here, as this is a secondary operation
+    }
 
     return true;
   } catch (error) {
     console.error('Error tracking page view:', error);
-    throw error;
+    // Don't throw the error, just return false to indicate failure
+    return false;
   }
 }
 

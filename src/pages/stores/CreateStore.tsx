@@ -1,26 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { createStore } from '../../lib/api';
 import { Store as StoreIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../../lib/supabase';
 
 export default function CreateStore() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [storeCount, setStoreCount] = useState(0);
   const { user } = useAuthStore();
-  const { isWithinLimits, getRemainingLimit } = useSubscriptionStore();
+  const { isWithinLimits, getRemainingLimit, fetchFeatureLimits, featureLimits } = useSubscriptionStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const initializeData = async () => {
+      if (!user) return;
+      
+      // Fetch feature limits
+      await fetchFeatureLimits();
+      
+      // Fetch store count
+      const { data, error } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('user_id', user.id);
+      
+      console.log('Store count query result:', { data, error });
+      
+      if (!error && data) {
+        setStoreCount(data.length);
+        console.log('Current store count:', data.length);
+      }
+    };
+
+    initializeData();
+  }, [user, fetchFeatureLimits]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
+    // Debug logging for feature limits
+    console.log('Current feature limits:', featureLimits);
+    console.log('Current store count:', storeCount);
+    console.log('Is within limits check:', isWithinLimits('stores', storeCount));
+
     // Check if user is within store limits
-    if (!isWithinLimits('stores', 0)) {
+    if (!isWithinLimits('stores', storeCount)) {
       toast.error('Store Limit Reached', {
         description: 'You have reached your store limit. Please upgrade your plan to create more stores.'
       });
@@ -36,8 +67,7 @@ export default function CreateStore() {
         name,
         description,
         theme: 'default',
-        social_links: {},
-        social_links_position: 'footer',
+        status: 'active'
       });
       toast.success('Store created successfully');
       navigate('/stores');

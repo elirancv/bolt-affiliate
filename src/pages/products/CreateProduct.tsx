@@ -3,16 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { createProduct } from '../../lib/api';
-import { X } from 'lucide-react';
+import { Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProductForm } from '../../components/products/ProductForm';
+import PageHeader from '../../components/ui/PageHeader';
 
 export default function CreateProduct() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { storeId } = useParams();
-  const { isWithinLimits, getRemainingLimit } = useSubscriptionStore();
+  const { isWithinLimits } = useSubscriptionStore();
 
   if (!storeId) {
     return <div>Store ID is required</div>;
@@ -43,30 +44,40 @@ export default function CreateProduct() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Add New Product</h1>
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-gray-100 rounded-full"
-        >
-          <X className="h-5 w-5" />
-        </button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <PageHeader
+            title="Add New Product"
+            subtitle="Create a new product to showcase in your store"
+            showBackButton
+            onBack={() => navigate(-1)}
+            icon={Package}
+          />
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
-            {error}
-          </div>
-        )}
-        <ProductForm
-          storeId={storeId}
-          onSubmit={handleSubmit}
-          onCancel={() => navigate(-1)}
-          loading={loading}
-          error={error}
-        />
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {error && (
+            <div className="p-4 bg-red-50 border-l-4 border-red-400">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <ProductForm
+            storeId={storeId}
+            onSubmit={handleSubmit}
+            onCancel={() => navigate(-1)}
+            loading={loading}
+            error={error}
+          />
+        </div>
       </div>
     </div>
   );

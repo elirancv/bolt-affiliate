@@ -187,10 +187,13 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   fetchFeatureLimits: async () => {
     set({ isLoading: true, error: null });
     try {
+      console.log('Fetching feature limits...');
       const { data, error } = await supabase
         .from('user_feature_limits')
         .select('*')
         .single();
+
+      console.log('Feature limits query result:', { data, error });
 
       if (error) throw error;
 
@@ -198,11 +201,15 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
         throw new Error('No feature limits found');
       }
 
+      console.log('Raw feature limits data:', data);
+
       const limits: FeatureLimits = {
         max_stores: data.limits.max_stores,
         total_products_limit: data.limits.total_products_limit,
         analytics_retention_days: data.limits.analytics_retention_days
       };
+
+      console.log('Parsed feature limits:', limits);
 
       set({
         featureLimits: limits,
@@ -210,24 +217,39 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
+      console.error('Error fetching feature limits:', error);
       set({ 
         error: error.message || 'Failed to fetch feature limits', 
         isLoading: false,
-        featureLimits: null,
-        tier: null
+        featureLimits: {
+          max_stores: 1, // Default to 1 store for free tier
+          total_products_limit: 10, // Default to 10 products
+          analytics_retention_days: 7 // Default to 7 days
+        },
+        tier: 'free'
       });
     }
   },
 
   isWithinLimits: (type: 'stores' | 'products', currentCount: number) => {
     const { featureLimits } = get();
-    if (!featureLimits) return false;
+    console.log('isWithinLimits check:', { type, currentCount, featureLimits });
+    
+    if (!featureLimits) {
+      console.log('No feature limits found');
+      return false;
+    }
 
+    let result = false;
     switch (type) {
       case 'stores':
-        return currentCount < featureLimits.max_stores;
+        result = currentCount < featureLimits.max_stores;
+        console.log('Store limit check:', { currentCount, maxStores: featureLimits.max_stores, result });
+        return result;
       case 'products':
-        return currentCount < featureLimits.total_products_limit;
+        result = currentCount < featureLimits.total_products_limit;
+        console.log('Product limit check:', { currentCount, maxProducts: featureLimits.total_products_limit, result });
+        return result;
       default:
         return false;
     }

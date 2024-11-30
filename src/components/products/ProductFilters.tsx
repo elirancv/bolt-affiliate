@@ -21,6 +21,11 @@ export function ProductFilters({
   onFiltersChange,
   onClose
 }: ProductFiltersProps) {
+  console.log('ProductFilters rendered with:', {
+    categories,
+    currentFilters: filters
+  });
+
   const handleClearFilters = () => {
     onFiltersChange({
       status: [],
@@ -31,13 +36,23 @@ export function ProductFilters({
   };
 
   const handleStatusChange = (value: string) => {
+    console.log('Status changed to:', value === 'all' ? [] : [value]);
     const newStatus = value === 'all' ? [] : [value];
     onFiltersChange({ ...filters, status: newStatus });
   };
 
   const handleCategoryChange = (value: string) => {
+    console.log('Category changed to:', value === 'all' ? [] : [value]);
     const newCategory = value === 'all' ? [] : [value];
     onFiltersChange({ ...filters, category: newCategory });
+  };
+
+  const handlePriceChange = (type: 'min' | 'max', value: string) => {
+    console.log(`${type} price changed to:`, value);
+    onFiltersChange({
+      ...filters,
+      [type === 'min' ? 'minPrice' : 'maxPrice']: value,
+    });
   };
 
   const hasActiveFilters = filters.category.length > 0 || filters.status.length > 0 || filters.minPrice || filters.maxPrice;
@@ -119,7 +134,7 @@ export function ProductFilters({
               type="number"
               className="w-full pl-5 pr-2 h-8 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={filters.minPrice}
-              onChange={(e) => onFiltersChange({ ...filters, minPrice: e.target.value })}
+              onChange={(e) => handlePriceChange('min', e.target.value)}
               placeholder="Min"
             />
           </div>
@@ -132,7 +147,7 @@ export function ProductFilters({
               type="number"
               className="w-full pl-5 pr-2 h-8 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={filters.maxPrice}
-              onChange={(e) => onFiltersChange({ ...filters, maxPrice: e.target.value })}
+              onChange={(e) => handlePriceChange('max', e.target.value)}
               placeholder="Max"
             />
           </div>

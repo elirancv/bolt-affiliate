@@ -10,7 +10,7 @@ export interface Store {
   social_links_position?: 'header' | 'footer' | 'both';
   affiliate_platform?: string;
   affiliate_id?: string;
-  status: 'active' | 'inactive' | 'pending';
+  is_active: boolean;
   created_at: string;
   updated_at: string;
   promotion_settings: PromotionSettings;
@@ -54,9 +54,12 @@ export interface Product {
   store_id: string;
   name: string;
   description?: string;
-  price: number;
-  discount_price?: number;
-  image_url?: string;
+  price?: number | null;
+  sale_price?: number | null;
+  product_url?: string;
+  affiliate_url: string;
+  image_urls?: string[];
+  category_id?: string;
   status: ProductStatus;
   is_featured?: boolean;
   created_at: string;

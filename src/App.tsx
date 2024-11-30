@@ -30,13 +30,12 @@ const queryClient = new QueryClient();
 export default function App() {
   const { user, isLoading, initializeAuth } = useAuthStore();
 
+  // Initialize auth only once when the component mounts
   useEffect(() => {
-    console.log('App: Initializing auth...');
     initializeAuth();
-  }, [initializeAuth]);
+  }, []); // Empty dependency array since initializeAuth is stable from zustand
 
   if (isLoading) {
-    console.log('App: Loading...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -73,7 +72,7 @@ export default function App() {
                   <Route index element={<ProductList />} />
                   <Route path=":productId" element={<ProductView />} />
                   <Route path=":productId/edit" element={<EditProduct />} />
-                  <Route path="add" element={<AddProduct />} />
+                  <Route path="add" element={<Navigate to="/stores" replace />} />
                 </Route>
                 
                 {/* Store-specific Routes */}

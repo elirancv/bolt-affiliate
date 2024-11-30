@@ -2,21 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ImageIcon, Upload, X, Plus, Trash2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
+import { Label } from '../ui/label';
+import ImageIcon, { Upload, X, Plus, Trash2 } from 'lucide-react';
 import FormField from '../common/FormField';
 import CategorySelect from './CategorySelect';
 import ImageModal from '../common/ImageModal';
 import ImageSlider from '../common/ImageSlider';
 import { parseAffiliateUrl } from '../../lib/utils/affiliate-parser';
 import { scrapeProduct, isSupportedMarketplace } from '../../lib/utils/product-scraper';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { ProductStatus } from '../../types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   description: z.string().optional(),
-  price: z.number().min(0, 'Price must be positive'),
-  sale_price: z.number().min(0, 'Sale price must be positive').optional(),
+  price: z.coerce.number().min(0, 'Price must be positive'),
+  sale_price: z.coerce.number().min(0, 'Sale price must be positive').optional().nullable(),
   product_url: z.string().url('Must be a valid URL'),
   affiliate_url: z.string().url('Must be a valid URL').min(1, 'Affiliate URL is required'),
   category_id: z.string().min(1, 'Category is required'),
@@ -73,88 +77,73 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
   // Watch image_urls for changes
   const imageUrls = watch('image_urls');
 
-  // Handle affiliate URL changes
   useEffect(() => {
     if (!affiliateUrl || initialData) return; // Skip if editing an existing product
 
-    const processUrl = async () => {
+    const processUrl = async (url: string) => {
       try {
         setIsProcessing(true);
-        const { marketplace, originalUrl } = parseAffiliateUrl(affiliateUrl);
-        setMarketplace(marketplace || null);
-
-        // Set the product URL regardless
-        if (originalUrl) {
-          setValue('product_url', originalUrl, { shouldValidate: true });
-          clearErrors('product_url');
-
-          // Only attempt to scrape if it's a supported marketplace
-          if (marketplace && isSupportedMarketplace(originalUrl)) {
-            const productData = await scrapeProduct(originalUrl, marketplace);
-
-            // Populate form with scraped data if available, but not images
-            if (productData.name) {
-              setValue('name', productData.name, { shouldValidate: true });
-            }
-            if (productData.description) {
-              setValue('description', productData.description, { shouldValidate: true });
-            }
-            if (productData.price) {
-              setValue('price', productData.price, { shouldValidate: true });
-            }
-            if (productData.sale_price) {
-              setValue('sale_price', productData.sale_price, { shouldValidate: true });
-            }
-            
-            toast.success('Product details loaded successfully');
-          }
+        const { marketplace, originalUrl } = parseAffiliateUrl(url);
+        
+        if (!marketplace || !isSupportedMarketplace(marketplace)) {
+          toast.error('Unsupported marketplace. Currently we only support Amazon.');
+          setIsProcessing(false);
+          return;
         }
-      } catch (err) {
-        console.error('Error processing affiliate URL:', err);
-        toast.error('Failed to load product details');
+
+        // Set the product URL immediately after parsing
+        setValue('product_url', originalUrl);
+        setValue('affiliate_url', url);
+
+        const productData = await scrapeProduct(originalUrl, marketplace);
+        
+        if (productData.error) {
+          if (productData.error === '429') {
+            toast.error(
+              'RapidAPI rate limit exceeded',
+              {
+                description: 'Your API usage limit has been reached. Please check your RapidAPI subscription or try again later.',
+                duration: 5000,
+              }
+            );
+          } else {
+            toast.error('Failed to fetch product details', {
+              description: 'Please try again or enter details manually.',
+              duration: 3000,
+            });
+          }
+          setIsProcessing(false);
+          return;
+        }
+
+        // Update other form fields with scraped data
+        if (productData.name) {
+          setValue('name', productData.name);
+          setValue('description', productData.description || '');
+          // Convert prices to numbers
+          setValue('price', productData.price ? Number(productData.price) : 0);
+          if (productData.sale_price) {
+            setValue('sale_price', Number(productData.sale_price));
+          }
+          if (productData.image_urls?.length > 0) {
+            setValue('image_urls', productData.image_urls);
+          }
+          
+          toast.success('Product details fetched successfully!');
+        }
+      } catch (error: any) {
+        console.error('Error processing URL:', error);
+        toast.error('Failed to process URL', {
+          description: 'Please check the URL and try again.',
+          duration: 3000,
+        });
       } finally {
         setIsProcessing(false);
       }
     };
 
-    processUrl();
+    processUrl(affiliateUrl);
   }, [affiliateUrl, initialData]);
-
-  const handleAffiliateUrlChange = async (url: string) => {
-    if (initialData) return; // Skip if editing an existing product
-    
-    setIsLoading(true);
-    try {
-      const { marketplace, originalUrl } = parseAffiliateUrl(url);
-      if (!marketplace || !originalUrl) {
-        toast.error('Invalid affiliate URL');
-        return;
-      }
-      
-      // Fetch product details
-      const productDetails = await scrapeProduct(originalUrl, marketplace);
-      
-      // Update form with scraped details
-      if (productDetails.title) setValue('name', productDetails.title);
-      if (productDetails.description) setValue('description', productDetails.description);
-      if (productDetails.price) setValue('price', productDetails.price.toString());
-      if (productDetails.sale_price) setValue('sale_price', productDetails.sale_price.toString());
-      if (productDetails.images?.length) {
-        // Only set images if there are no existing images during initial load
-        const currentImages = watch('image_urls') || [];
-        if (currentImages.length === 0) {
-          setValue('image_urls', productDetails.images);
-        }
-      }
-      
-      toast.success('Product details loaded successfully');
-    } catch (error) {
-      console.error('Error processing affiliate URL:', error);
-      toast.error('Failed to load product details');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleImageChange = (index: number, url: string) => {
     const newImages = [...(imageUrls || [])];
@@ -251,201 +240,188 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
   };
 
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-white">
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-        {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">{error}</h3>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {/* Status and Featured Fields */}
-          <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2">
-            <div>
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                Status
-              </label>
-              <select
-                id="status"
-                {...register('status')}
-                className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="draft">Draft</option>
-              </select>
-              {errors.status && (
-                <p className="mt-2 text-sm text-red-600">{errors.status.message}</p>
-              )}
-            </div>
-
-            <div className="flex items-center">
-              <input
-                id="is_featured"
-                type="checkbox"
-                {...register('is_featured')}
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <label htmlFor="is_featured" className="ml-2 block text-sm text-gray-900">
-                Featured Product
-              </label>
-            </div>
-          </div>
-
+    <div>
+      <div className="max-w-3xl mx-auto p-6">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
           {/* Affiliate URL */}
-          <FormField
-            label="Affiliate URL"
-            error={errors.affiliate_url?.message}
-            description={
-              isProcessing
-                ? "Processing URL..."
-                : marketplace
-                  ? `Detected marketplace: ${marketplace}`
-                  : "Paste your affiliate link from Amazon, AliExpress, etc."
-            }
-          >
-            <div className="relative">
-              <input
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Product Source</h3>
+              <p className="text-sm text-gray-500">Enter your affiliate link to automatically fetch product details</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="affiliate_url">Affiliate URL</Label>
+              <Input
+                id="affiliate_url"
                 {...register('affiliate_url')}
-                type="url"
                 placeholder="https://example.com/product?affiliate=your-id"
-                className="block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow text-sm"
+                className="w-full"
               />
-              {isProcessing && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                </div>
+              {errors.affiliate_url && (
+                <p className="text-sm text-red-500">{errors.affiliate_url.message}</p>
               )}
             </div>
-          </FormField>
-
-          {/* Product Name */}
-          <FormField
-            label="Product Name"
-            type="text"
-            {...register('name')}
-            error={errors.name?.message}
-          />
-
-          {/* Description */}
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <div className="mt-1">
-              <textarea
-                {...register('description')}
-                rows={4}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              />
-            </div>
-            {errors.description && (
-              <p className="mt-2 text-sm text-red-600">{errors.description.message}</p>
+            {isProcessing && (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
             )}
           </div>
 
-          {/* Pricing & Details Grid */}
-          <div className="space-y-4">
-            {/* Pricing Section */}
-            <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
-              <h3 className="text-base font-medium text-gray-900 mb-4">Pricing</h3>
-              <div className="space-y-4">
-                <FormField label="Price" error={errors.price?.message}>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">$</span>
-                    </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      {...register('price', { valueAsNumber: true })}
-                      className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-shadow text-sm"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </FormField>
-
-                <FormField label="Sale Price" error={errors.sale_price?.message}>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">$</span>
-                    </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      {...register('sale_price', { valueAsNumber: true })}
-                      className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-shadow text-sm"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </FormField>
-              </div>
+          {/* Product Details */}
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
+              <p className="text-sm text-gray-500">Enter the main details of your product</p>
             </div>
 
-            {/* Product Details Section */}
-            <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
-              <h3 className="text-base font-medium text-gray-900 mb-4">Product Details</h3>
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">Product Name</Label>
+                <Input
+                  id="name"
+                  {...register('name')}
+                  placeholder="Enter product name"
+                  className="w-full"
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <textarea
+                  id="description"
+                  {...register('description')}
+                  placeholder="Enter product description"
+                  className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 min-h-[100px]"
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = `${target.scrollHeight}px`;
+                  }}
+                />
+                {errors.description && (
+                  <p className="text-sm text-red-500">{errors.description.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing & Details */}
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Pricing & Details</h3>
+              <p className="text-sm text-gray-500">Set your product's pricing and additional details</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Pricing Section */}
               <div className="space-y-4">
-                <FormField label="Product URL" error={errors.product_url?.message}>
-                  <input
-                    type="url"
-                    {...register('product_url')}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow text-sm"
-                    placeholder="https://"
-                  />
-                </FormField>
-
-                <FormField label="Category" error={errors.category_id?.message} description="Select a category for your product">
-                  <CategorySelect
-                    storeId={storeId}
-                    value={watch('category_id')}
-                    onChange={(value) => setValue('category_id', value, { shouldValidate: true })}
-                  />
-                </FormField>
-
+                <h4 className="text-sm font-medium text-gray-700">Pricing</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    label="Status"
-                    error={errors.status?.message}
-                  >
-                    <select
-                      {...register('status')}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="draft">Draft</option>
-                    </select>
-                  </FormField>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Price</Label>
+                    <Input
+                      id="price"
+                      {...register('price')}
+                      placeholder="Enter product price"
+                      className="w-full"
+                    />
+                    {errors.price && (
+                      <p className="text-sm text-red-500">{errors.price.message}</p>
+                    )}
+                  </div>
 
-                  <FormField
-                    label="Featured Product"
-                    error={errors.is_featured?.message}
-                  >
-                    <div className="mt-1">
-                      <input
-                        type="checkbox"
-                        {...register('is_featured')}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-2 text-sm text-gray-600">
-                        Mark as featured product
-                      </span>
+                  <div className="space-y-2">
+                    <Label htmlFor="sale_price">Sale Price</Label>
+                    <Input
+                      id="sale_price"
+                      {...register('sale_price')}
+                      placeholder="Enter sale price"
+                      className="w-full"
+                    />
+                    {errors.sale_price && (
+                      <p className="text-sm text-red-500">{errors.sale_price.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Details */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-gray-700">Product Details</h4>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="product_url">Product URL</Label>
+                    <Input
+                      id="product_url"
+                      {...register('product_url')}
+                      placeholder="https://"
+                      className="w-full"
+                    />
+                    {errors.product_url && (
+                      <p className="text-sm text-red-500">{errors.product_url.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="category_id">Category</Label>
+                    <CategorySelect
+                      storeId={storeId}
+                      value={watch('category_id')}
+                      onChange={(value) => setValue('category_id', value, { shouldValidate: true })}
+                    />
+                    {errors.category_id && (
+                      <p className="text-sm text-red-500">{errors.category_id.message}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <select
+                        id="status"
+                        {...register('status')}
+                        className="block w-full rounded-lg border-gray-200 shadow-sm focus:ring-0 focus:border-blue-400 sm:text-sm transition-colors"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="draft">Draft</option>
+                      </select>
+                      {errors.status && (
+                        <p className="text-sm text-red-500">{errors.status.message}</p>
+                      )}
                     </div>
-                  </FormField>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="is_featured">Featured</Label>
+                      <div className="flex items-center h-9">
+                        <input
+                          id="is_featured"
+                          type="checkbox"
+                          {...register('is_featured')}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-200 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-600">Featured product</span>
+                      </div>
+                      {errors.is_featured && (
+                        <p className="text-sm text-red-500">{errors.is_featured.message}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Images Section */}
-          <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
-            <h3 className="text-base font-medium text-gray-900 mb-4">Product Images</h3>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Product Images</h3>
+              <p className="text-sm text-gray-500">Add images to showcase your product</p>
+            </div>
+
             <div className="space-y-4">
               <ImageSlider
                 images={imageUrls || []}
@@ -458,37 +434,67 @@ export default function ProductForm({ storeId, onSubmit, loading = false, error,
               {isAddingImage && (
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
-                    <input
+                    <Input
                       type="text"
                       value={newImageUrl}
                       onChange={(e) => setNewImageUrl(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter image URL"
+                      className="w-full"
                     />
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="primary"
                     onClick={handleAddImage}
-                    className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
                   >
                     Add
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => {
                       setNewImageUrl('');
                       setIsAddingImage(false);
                     }}
-                    className="px-3 py-2 text-gray-600 hover:text-gray-800 rounded-lg text-sm"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      </form>
+
+          {/* Form Actions */}
+          <div className="fixed bottom-0 left-0 right-0 border-t bg-white py-4 px-6 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => window.history.back()}
+                className="text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Product'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
       {/* Image Modal */}
       {selectedImage && (
         <ImageModal
