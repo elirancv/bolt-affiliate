@@ -338,21 +338,8 @@ export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'u
 export async function getProducts(storeId?: string): Promise<Product[]> {
   try {
     let query = supabase
-      .from('products')
-      .select(`
-        *,
-        stores (
-          id,
-          name
-        ),
-        category:categories (
-          id,
-          name,
-          description,
-          type,
-          slug
-        )
-      `);
+      .from('product_details')
+      .select('*');
 
     if (storeId) {
       query = query.eq('store_id', storeId);

@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '../../types';
 import { formatPrice, cn } from '../../lib/utils';
-import { Edit, ExternalLink, Share2, Trash2, Package } from 'lucide-react';
+import { Edit, Eye, Share2, Trash2, Package, DollarSign, Link } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { toast } from 'react-hot-toast';
 import {
@@ -54,18 +54,79 @@ export function ProductCard({ product, storeId, onDelete, viewMode }: ProductCar
 
     try {
       await onDelete(product.id);
-      toast.success('Product deleted successfully');
+      toast.success('Product deleted successfully', {
+        duration: 3000,
+        position: 'bottom-center',
+      });
+      alert('Product deleted successfully!');
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast.error('Failed to delete product');
+      toast.error('Failed to delete product', {
+        duration: 3000,
+        position: 'bottom-center',
+      });
+      alert('Failed to delete product');
     }
   };
 
   const handleCardClick = () => {
     if (storeId) {
+      navigate(`/stores/${storeId}/products/${product.id}`);
+    } else {
+      navigate(`/products/${product.id}`);
+    }
+  };
+
+  const handleEditProduct = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (storeId) {
       navigate(`/stores/${storeId}/products/${product.id}/edit`);
     } else {
       navigate(`/products/${product.id}/edit`);
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('Share button clicked');
+    
+    try {
+      if (!product.affiliate_url) {
+        toast.error('No affiliate link available for this product');
+        return;
+      }
+
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          text: product.description || 'Check out this product!',
+          url: product.affiliate_url
+        });
+        console.log('Shared successfully');
+      } else {
+        // Fallback to clipboard if Web Share API is not available
+        await navigator.clipboard.writeText(product.affiliate_url);
+        toast.success('Affiliate link copied to clipboard', {
+          duration: 3000,
+          position: 'bottom-center',
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing product:', error);
+      toast.error('Failed to share product');
+    }
+  };
+
+  const handleOpenAffiliateLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (product.affiliate_url) {
+      window.open(product.affiliate_url, '_blank');
+    } else {
+      toast.error('No affiliate link available for this product', {
+        duration: 3000,
+        position: 'bottom-center',
+      });
+      alert('No affiliate link available for this product');
     }
   };
 
@@ -75,16 +136,6 @@ export function ProductCard({ product, storeId, onDelete, viewMode }: ProductCar
       navigate(`/stores/${storeId}/products/${product.id}`);
     } else {
       navigate(`/products/${product.id}`);
-    }
-  };
-
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.origin + `/stores/${storeId}/products/${product.id}`);
-      toast.success('Product link copied to clipboard');
-    } catch (error) {
-      console.error('Error sharing product:', error);
-      toast.error('Failed to copy product link');
     }
   };
 
@@ -141,25 +192,30 @@ export function ProductCard({ product, storeId, onDelete, viewMode }: ProductCar
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-1 flex items-center space-x-1">
             <ActionButton
-              icon={<ExternalLink className="h-4 w-4" />}
+              icon={<Eye className="h-4 w-4" />}
               tooltip="View Product"
-              onClick={handleViewProduct}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardClick();
+              }}
+            />
+            <ActionButton
+              icon={<DollarSign className="h-4 w-4" />}
+              tooltip="Open Affiliate Link"
+              onClick={handleOpenAffiliateLink}
             />
             <ActionButton
               icon={<Share2 className="h-4 w-4" />}
               tooltip="Share Product"
               onClick={(e) => {
                 e.stopPropagation();
-                handleShare();
+                handleShare(e);
               }}
             />
             <ActionButton
               icon={<Edit className="h-4 w-4" />}
               tooltip="Edit Product"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCardClick();
-              }}
+              onClick={handleEditProduct}
             />
             <ActionButton
               icon={<Trash2 className="h-4 w-4" />}
@@ -228,25 +284,30 @@ export function ProductCard({ product, storeId, onDelete, viewMode }: ProductCar
         {/* Action Buttons */}
         <div className="flex items-center space-x-2">
           <ActionButton
-            icon={<ExternalLink className="h-4 w-4" />}
+            icon={<Eye className="h-4 w-4" />}
             tooltip="View Product"
-            onClick={handleViewProduct}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCardClick();
+            }}
+          />
+          <ActionButton
+            icon={<DollarSign className="h-4 w-4" />}
+            tooltip="Open Affiliate Link"
+            onClick={handleOpenAffiliateLink}
           />
           <ActionButton
             icon={<Share2 className="h-4 w-4" />}
             tooltip="Share Product"
             onClick={(e) => {
               e.stopPropagation();
-              handleShare();
+              handleShare(e);
             }}
           />
           <ActionButton
             icon={<Edit className="h-4 w-4" />}
             tooltip="Edit Product"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCardClick();
-            }}
+            onClick={handleEditProduct}
           />
           <ActionButton
             icon={<Trash2 className="h-4 w-4" />}
