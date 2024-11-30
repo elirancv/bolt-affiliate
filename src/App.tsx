@@ -19,45 +19,48 @@ import EditProduct from './pages/products/EditProduct';
 import Analytics from './pages/Analytics';
 import Pages from './pages/Pages';
 import StoreDetails from './pages/stores/StoreDetails';
-import { ToastProvider } from './components/ui/Toast';
+import SubscriptionPlans from './pages/subscription/SubscriptionPlans';
+import Billing from './pages/subscription/Billing';
+import LandingPage from './pages/LandingPage';
+import { Toaster } from 'sonner';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import ProductRedirect from './components/ProductRedirect'; // Import ProductRedirect component
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1
+    }
+  }
+});
 
 export default function App() {
-  const { setUser, refreshSession } = useAuthStore();
+  const { user, isLoading, initializeAuth } = useAuthStore();
 
+  // Initialize auth only once when the component mounts
   useEffect(() => {
-    // Initial session check
-    refreshSession();
+    initializeAuth();
+  }, []); // Empty dependency array since initializeAuth is stable from zustand
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          metadata: {
-            first_name: session.user.user_metadata?.first_name,
-            last_name: session.user.user_metadata?.last_name,
-            subscription_tier: session.user.user_metadata?.subscription_tier || 'free'
-          }
-        });
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [setUser, refreshSession]);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <ToastProvider>
+    <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" expand={true} richColors />
       <div className="min-h-screen bg-gray-100">
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/" element={!user ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" replace />} />
             
             {/* Store User Routes */}
             <Route path="/user/:storeId" element={<StoreView />} />
@@ -70,26 +73,35 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/stores" element={<StoreList />} />
-                <Route path="/stores/create" element={<CreateStore />} />
                 
+                {/* Create Store Route - Moved before store-specific routes */}
+                <Route path="/stores/new" element={<CreateStore />} />
+                
+                {/* Store-specific Routes */}
+                <Route path="/stores/:storeId">
+                  <Route index element={<StoreDetails />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="pages" element={<Pages />} />
+                  <Route path="settings" element={<StoreSettings />} />
+                  <Route path="products" element={<ProductList />} />
+                  <Route path="products/add" element={<AddProduct />} />
+                  <Route path="products/create" element={<AddProduct />} />
+                  <Route path="products/:productId" element={<ProductView />} />
+                  <Route path="products/:productId/edit" element={<EditProduct />} />
+                </Route>
+
                 {/* Product Routes */}
                 <Route path="/products">
                   <Route index element={<ProductList />} />
                   <Route path=":productId" element={<ProductView />} />
                   <Route path=":productId/edit" element={<EditProduct />} />
-                  <Route path="add" element={<AddProduct />} />
+                  <Route path="new" element={<ProductRedirect />} />
+                  <Route path="add" element={<ProductRedirect />} />
                 </Route>
                 
-                {/* Store-specific Routes */}
-                <Route path="/stores/:storeId">
-                  <Route index element={<StoreDetails />} />
-                  <Route path="products" element={<ProductList />} />
-                  <Route path="products/add" element={<AddProduct />} />
-                  <Route path="products/:productId/edit" element={<EditProduct />} />
-                  <Route path="analytics" element={<Analytics />} />
-                  <Route path="pages" element={<Pages />} />
-                  <Route path="settings" element={<StoreSettings />} />
-                </Route>
+                {/* Subscription Routes */}
+                <Route path="/subscription" element={<SubscriptionPlans />} />
+                <Route path="/billing" element={<Billing />} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
@@ -97,10 +109,10 @@ export default function App() {
             </Route>
 
             {/* Catch-all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
           </Routes>
         </Router>
       </div>
-    </ToastProvider>
+    </QueryClientProvider>
   );
 }

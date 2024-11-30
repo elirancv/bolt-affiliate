@@ -6,55 +6,79 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  initialized: boolean;
   setUser: (user: User | null) => void;
   setError: (error: string | null) => void;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  initializeAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isLoading: true,
   error: null,
-  setUser: (user) => set({ user }),
+  initialized: false,
+
+  setUser: (user) => set({ user, isLoading: false }),
   setError: (error) => set({ error }),
-  signOut: async () => {
-    try {
-      await supabase.auth.signOut();
-      set({ user: null, error: null });
-    } catch (error) {
-      set({ error: 'Failed to sign out. Please try again.' });
-    }
-  },
-  refreshSession: async () => {
+
+  initializeAuth: async () => {
+    // If already initialized and we have a user, don't initialize again
+    if (get().initialized && get().user) return;
+    
     try {
       set({ isLoading: true, error: null });
+      
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
       if (error) throw error;
-      
+
       if (session?.user) {
-        console.log('User metadata:', session.user.user_metadata);
-        console.log('Full user:', session.user);
-        const metadata = session.user.user_metadata as UserMetadata;
+        // Get user profile using secure function
+        const { data: profile, error: profileError } = await supabase
+          .rpc('get_profile');
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+
+        // Create user object with profile data
         const user: User = {
           id: session.user.id,
           email: session.user.email!,
           metadata: {
-            first_name: metadata?.first_name,
-            last_name: metadata?.last_name,
-            subscription_tier: metadata?.subscription_tier || 'free'
+            first_name: profile?.first_name || session.user.user_metadata?.first_name || '',
+            last_name: profile?.last_name || session.user.user_metadata?.last_name || '',
+            subscription_tier: session.user.user_metadata?.subscription_tier || 'free'
           }
         };
-        set({ user, error: null });
+
+        // Update the user's metadata if needed
+        if (profile && (!session.user.user_metadata?.first_name || !session.user.user_metadata?.last_name)) {
+          await supabase.auth.updateUser({
+            data: {
+              first_name: profile.first_name,
+              last_name: profile.last_name
+            }
+          });
+        }
+
+        set({ user, isLoading: false, initialized: true });
       } else {
-        set({ user: null });
+        set({ user: null, isLoading: false, initialized: true });
       }
     } catch (error: any) {
+      console.error('Auth initialization error:', error);
+      set({ error: error.message, isLoading: false, initialized: true });
+    }
+  },
+
+  signOut: async () => {
+    try {
+      await supabase.auth.signOut();
+      set({ user: null, error: null });
+    } catch (error: any) {
       set({ error: error.message });
-      console.error('Session refresh error:', error);
-    } finally {
-      set({ isLoading: false });
     }
   }
 }));

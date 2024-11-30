@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { checkAdminStatus } from '../lib/admin';
+import { checkAdminStatus } from '../lib/supabase';
 
 export function useAdmin() {
   const [isAdmin, setIsAdmin] = useState(false);

@@ -74,7 +74,7 @@ export function ProductListContent({
         {products.length === 0 && storeId && (
           <Button
             className="mt-4"
-            onClick={() => navigate(`/stores/${storeId}/products/new`)}
+            onClick={() => navigate(`/stores/${storeId}/products/add`)}
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             Add Product

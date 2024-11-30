@@ -7,7 +7,6 @@ export async function trackProductClick(storeId: string, productId: string) {
     const { error } = await supabase.rpc(
       'increment_product_clicks',
       { 
-        p_store_id: storeId,
         p_product_id: productId
       }
     );

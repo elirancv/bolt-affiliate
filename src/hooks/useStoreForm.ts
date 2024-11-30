@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Store } from '../types';
 import { getStore, updateStore } from '../lib/api';
-import { useToasts } from '../components/ui/Toast';
+import { toast } from 'sonner';
 
-interface UseStoreFormProps {
-  storeId: string;
-  onSuccess?: () => void;
-}
+const DEFAULT_PROMOTION_SETTINGS = {
+  banner_enabled: false,
+  banner_text: '',
+  banner_link: '',
+  banner_color: '#000000',
+  banner_background: '#ffffff',
+};
 
 interface FormState {
   isLoading: boolean;
@@ -15,12 +18,10 @@ interface FormState {
   isDirty: boolean;
 }
 
-const DEFAULT_PROMOTION_SETTINGS = {
-  show_free_shipping_banner: false,
-  free_shipping_threshold: 50,
-  banner_text: '🎉 Free shipping on orders over $50',
-  banner_enabled: false,
-};
+interface UseStoreFormProps {
+  storeId: string;
+  onSuccess?: () => void;
+}
 
 export function useStoreForm({ storeId, onSuccess }: UseStoreFormProps) {
   const [formData, setFormData] = useState<Store | null>(null);
@@ -31,7 +32,6 @@ export function useStoreForm({ storeId, onSuccess }: UseStoreFormProps) {
     error: null,
     isDirty: false,
   });
-  const { addToast } = useToasts();
 
   useEffect(() => {
     loadStore();
@@ -55,11 +55,7 @@ export function useStoreForm({ storeId, onSuccess }: UseStoreFormProps) {
         isLoading: false,
         error: error.message || 'Failed to load store',
       }));
-      addToast({
-        title: 'Error',
-        description: 'Failed to load store settings',
-        variant: 'destructive',
-      });
+      toast.error('Failed to load store settings');
     }
   };
 
@@ -118,10 +114,7 @@ export function useStoreForm({ storeId, onSuccess }: UseStoreFormProps) {
       await updateStore(storeId, formData);
       setOriginalData(formData);
       setState(prev => ({ ...prev, isDirty: false }));
-      addToast({
-        title: 'Success',
-        description: 'Store settings saved successfully',
-      });
+      toast.success('Store settings saved successfully');
       // Add a small delay before navigation to ensure the toast is shown
       setTimeout(() => {
         onSuccess?.();
@@ -131,11 +124,7 @@ export function useStoreForm({ storeId, onSuccess }: UseStoreFormProps) {
         ...prev,
         error: error.message || 'Failed to save changes',
       }));
-      addToast({
-        title: 'Error',
-        description: 'Failed to save changes',
-        variant: 'destructive',
-      });
+      toast.error('Failed to save changes');
     } finally {
       setState(prev => ({ ...prev, isSaving: false }));
     }

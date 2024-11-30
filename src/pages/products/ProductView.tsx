@@ -3,38 +3,92 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Package, Share2, ExternalLink, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { Product } from '../../types';
-import { getProducts } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 
 export default function ProductView() {
-  const { productId } = useParams();
+  const { productId, storeId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
 
+  console.log('ProductView - Mounted with params:', { productId, storeId });
+
+  // Add debug log for initial render
+  console.log('ProductView - Initial render with:', { productId, storeId, loading, product });
+
   useEffect(() => {
+    console.log('ProductView - useEffect START with:', { productId, storeId });
+
+    // Skip if we're missing required params
+    if (!productId || !storeId) {
+      console.log('ProductView - Missing required params:', { productId, storeId });
+      return;
+    }
+
+    // Navigate away if this is an add route - it should be handled by AddProduct component
+    if (productId === 'add') {
+      console.log('ProductView - Add route detected, navigating away');
+      navigate(`/stores/${storeId}/products/add`);
+      return;
+    }
+
     const loadProduct = async () => {
+      console.log('ProductView - loadProduct START:', { productId, storeId });
+      
       try {
         setLoading(true);
-        const products = await getProducts();
-        const foundProduct = products.find(p => p.id === productId);
+        console.log('ProductView - Before Supabase query:', { productId, storeId });
         
-        if (!foundProduct) {
+        // Get the product directly from the database
+        const { data: product, error } = await supabase
+          .from('products')
+          .select(`
+            *,
+            store:stores (
+              id,
+              name
+            )
+          `)
+          .eq('id', productId)
+          .eq('store_id', storeId)
+          .single();
+        
+        console.log('ProductView - After Supabase query:', { product, error });
+
+        if (error) {
+          console.error('ProductView - Database error:', error);
+          toast.error('Error loading product');
+          return;
+        }
+
+        if (!product) {
+          console.log('ProductView - No product found');
           toast.error('Product not found');
-          navigate('/products');
           return;
         }
         
-        setProduct(foundProduct);
+        console.log('ProductView - Setting product:', product);
+        setProduct(product);
       } catch (error) {
-        console.error('Error loading product:', error);
+        console.error('ProductView - Error in loadProduct:', error);
         toast.error('Failed to load product');
       } finally {
+        console.log('ProductView - loadProduct END');
         setLoading(false);
       }
     };
 
+    // Debug log before calling loadProduct
+    console.log('ProductView - About to call loadProduct');
     loadProduct();
-  }, [productId, navigate]);
+
+    return () => {
+      console.log('ProductView - useEffect cleanup');
+    };
+  }, [productId, storeId]);
+
+  // Debug log for render
+  console.log('ProductView - Rendering with state:', { product, loading, productId, storeId });
 
   const handleShare = async () => {
     if (!product) return;
@@ -56,6 +110,29 @@ export default function ProductView() {
       toast.error('Failed to share product');
     }
   };
+
+  if (productId === 'create') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <button
+            onClick={() => navigate(`/stores/${storeId}/products`)}
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Products
+          </button>
+
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-6">Create New Product</h1>
+              {/* Add your product creation form here */}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -81,7 +158,7 @@ export default function ProductView() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => navigate(`/stores/${storeId}/products`)}
           className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />

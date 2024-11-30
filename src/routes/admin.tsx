@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import { getAdminStats } from '../lib/supabase/admin'
+import { getAdminStats } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext'
 
 const AdminDashboard: React.FC = () => {

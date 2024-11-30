@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAdminStats } from '../../lib/admin';
+import { getAdminStats } from '../../lib/supabase';
 import { useAdmin } from '../../hooks/useAdmin';
 import AdminStats from '../../components/admin/AdminStats';
 import UsersList from '../../components/admin/UsersList';

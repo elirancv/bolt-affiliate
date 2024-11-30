@@ -1,0 +1,28 @@
+[functions.store-management]
+verify_jwt = true
+
+[functions.subscription-management]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.store-management.import_map]
+imports = {
+  "https://deno.land/std@0.177.0/http/server.ts" = "https://deno.land/std@0.177.0/http/server.ts",
+  "@supabase/supabase-js" = "https://esm.sh/@supabase/supabase-js@2.7.1"
+}
+
+[functions.subscription-management.import_map]
+imports = {
+  "https://deno.land/std@0.177.0/http/server.ts" = "https://deno.land/std@0.177.0/http/server.ts",
+  "@supabase/supabase-js" = "https://esm.sh/@supabase/supabase-js@2.7.1",
+  "stripe" = "https://esm.sh/stripe@12.0.0?target=deno"
+}
+
+[functions.stripe-webhook.import_map]
+imports = {
+  "https://deno.land/std@0.177.0/http/server.ts" = "https://deno.land/std@0.177.0/http/server.ts",
+  "@supabase/supabase-js" = "https://esm.sh/@supabase/supabase-js@2.7.1",
+  "stripe" = "https://esm.sh/stripe@12.0.0?target=deno"
+}
