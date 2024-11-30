@@ -36,13 +36,6 @@ export default function CreateStore() {
       if (!error && data) {
         setStoreCount(data.length);
         console.log('Current store count:', data.length);
-
-        // If stores exist, redirect to the first store's product add page
-        if (data.length > 0) {
-          console.log('Stores exist, redirecting to products/add', { storeId: data[0].id });
-          navigate(`/stores/${data[0].id}/products/add`, { replace: true });
-          return;
-        }
       }
     };
 
