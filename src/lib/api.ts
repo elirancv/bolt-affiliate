@@ -34,38 +34,42 @@ export async function createStore(store: Omit<Store, 'id' | 'created_at' | 'upda
 
 export async function getStores(userId: string) {
   try {
-    // Get all stores with their products count
+    // Get all stores with their products
     const { data: stores, error: storesError } = await supabase
       .from('stores')
       .select(`
         *,
-        products:products(count)
+        products(id)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (storesError) throw storesError;
 
-    // Get analytics data for all stores
-    const { data: analytics, error: analyticsError } = await supabase
-      .from('analytics')
-      .select('*')
-      .in('store_id', stores?.map(store => store.id) || [])
-      .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    // Get product clicks for all products
+    const productIds = stores?.flatMap(store => 
+      store.products?.map(product => product.id) || []
+    ) || [];
 
-    if (analyticsError) throw analyticsError;
+    const { data: clicks, error: clicksError } = await supabase
+      .from('product_clicks')
+      .select('product_id, count')
+      .in('product_id', productIds);
+
+    if (clicksError) throw clicksError;
 
     // Combine store data with metrics
     const storesWithMetrics = stores.map(store => {
-      const storeAnalytics = analytics?.filter(a => a.store_id === store.id) || [];
-      const totalClicks = storeAnalytics.reduce((sum, record) => sum + (record.product_clicks || 0), 0);
+      const storeProductIds = store.products?.map(p => p.id) || [];
+      const storeClicks = clicks?.filter(click => 
+        storeProductIds.includes(click.product_id)
+      ) || [];
+      const totalClicks = storeClicks.reduce((sum, click) => sum + (click.count || 0), 0);
 
       return {
         ...store,
-        productsCount: store.products[0].count,
+        productsCount: store.products?.length || 0,
         totalClicks,
-        totalCommission: 0, // This will be implemented later
-        approvedCommissions: 0, // This will be implemented later
         lastUpdated: store.updated_at
       };
     });
@@ -161,8 +165,7 @@ export async function getPublicStore(storeId: string) {
       .select('*')
       .eq('id', storeId)
       .eq('is_active', true)
-      .single()
-      .returns<Store | null>();
+      .single();
 
     if (storeError) {
       console.error('Supabase error fetching active store:', {
@@ -173,6 +176,24 @@ export async function getPublicStore(storeId: string) {
         code: storeError.code
       });
       throw storeError;
+    }
+
+    // Get products for this store
+    const { data: products } = await supabase
+      .from('products')
+      .select('id')
+      .eq('store_id', storeId);
+
+    if (products && products.length > 0) {
+      // Get total clicks for all products in this store
+      const { data: clicks } = await supabase
+        .from('product_clicks')
+        .select('count')
+        .in('product_id', products.map(p => p.id));
+
+      store.totalClicks = clicks?.reduce((sum, click) => sum + (click.count || 0), 0) || 0;
+    } else {
+      store.totalClicks = 0;
     }
 
     if (!store) {
@@ -225,21 +246,47 @@ export async function getPublicCategories(storeId: string) {
     if (process.env.NODE_ENV === 'development') {
       console.log('Fetching public categories for store:', storeId);
     }
+    
+    // Get all categories first
     const { data: categories, error } = await supabase
       .from('categories')
-      .select('*')
-      .eq('store_id', storeId)
-      .returns<Category[]>();
+      .select(`
+        id,
+        name
+      `)
+      .order('name');
 
     if (error) {
       console.error('Supabase error fetching categories:', error);
       throw error;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Found ${categories?.length || 0} categories`);
+    // Check if there are any featured products for this store
+    const { data: featuredProducts, error: featuredError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('store_id', storeId)
+      .eq('is_featured', true)
+      .limit(1);
+
+    if (featuredError) {
+      console.error('Error checking featured products:', featuredError);
+      throw featuredError;
     }
-    return categories || [];
+
+    // Add Best Sellers category if there are featured products
+    const allCategories = [...(categories || [])];
+    if (featuredProducts && featuredProducts.length > 0) {
+      allCategories.push({
+        id: 'best-sellers',
+        name: 'Best Sellers'
+      });
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Found ${allCategories.length} categories`);
+    }
+    return allCategories;
   } catch (error) {
     console.error('Error getting public categories:', error);
     throw error;

@@ -20,23 +20,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Add error logging
+// Add authentication logging
 let lastSignInTime = 0;
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN') {
-    // Prevent duplicate logs within 5 seconds
     const now = Date.now();
     if (now - lastSignInTime > 5000) {
       lastSignInTime = now;
-      logger.info('User signed in', { 
+      logger.info('User authenticated successfully', { 
         userId: session?.user?.id,
-        email: session?.user?.email 
+        email: session?.user?.email,
+        timestamp: new Date().toISOString()
       });
     }
   } else if (event === 'SIGNED_OUT') {
-    logger.info('User signed out');
+    logger.info('User signed out successfully');
   } else if (event === 'TOKEN_REFRESHED') {
-    logger.debug('Auth token refreshed');
+    logger.debug('Auth token refreshed successfully');
+  } else if (event === 'USER_UPDATED') {
+    logger.info('User profile updated');
+  } else if (event === 'USER_DELETED') {
+    logger.warn('User account deleted');
   }
 });
 
