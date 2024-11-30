@@ -78,12 +78,14 @@ export default function App() {
                 {/* Store-specific Routes */}
                 <Route path="/stores/:storeId">
                   <Route index element={<StoreDetails />} />
-                  <Route path="products" element={<ProductList />} />
-                  <Route path="products/add" element={<AddProduct />} />
-                  <Route path="products/:productId/edit" element={<EditProduct />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="pages" element={<Pages />} />
                   <Route path="settings" element={<StoreSettings />} />
+                  <Route path="products" element={<ProductList />} />
+                  <Route path="products/add" element={<AddProduct />} />
+                  <Route path="products/create" element={<AddProduct />} />
+                  <Route path="products/:productId" element={<ProductView />} />
+                  <Route path="products/:productId/edit" element={<EditProduct />} />
                 </Route>
                 
                 {/* Subscription Routes */}
