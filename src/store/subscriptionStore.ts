@@ -13,6 +13,14 @@ export interface FeatureLimits {
   current_analytics_days?: number;
 }
 
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  features: FeatureLimits;
+}
+
 export interface Subscription {
   user_id: string;
   tier: string;
@@ -28,24 +36,29 @@ export interface Subscription {
 interface SubscriptionStore {
   subscription: Subscription | null;
   featureLimits: FeatureLimits | null;
+  availablePlans: SubscriptionPlan[] | null;
   isLoading: boolean;
   error: PostgrestError | null;
   fetchCurrentSubscription: () => Promise<Subscription | null>;
   fetchFeatureLimits: () => Promise<FeatureLimits | null>;
+  fetchAvailablePlans: () => Promise<SubscriptionPlan[] | null>;
   isWithinLimits: (type: 'stores' | 'products', currentCount: number) => boolean;
   getRemainingLimit: (type: 'stores' | 'products', currentCount: number) => number;
   setSubscription: (subscription: Subscription | null) => void;
   setFeatureLimits: (limits: FeatureLimits | null) => void;
+  setAvailablePlans: (plans: SubscriptionPlan[] | null) => void;
 }
 
 export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   subscription: null,
   featureLimits: null,
+  availablePlans: null,
   isLoading: false,
   error: null,
 
   setSubscription: (subscription: Subscription | null) => set({ subscription }),
   setFeatureLimits: (limits: FeatureLimits | null) => set({ featureLimits: limits }),
+  setAvailablePlans: (plans: SubscriptionPlan[] | null) => set({ availablePlans: plans }),
 
   fetchCurrentSubscription: async () => {
     try {
@@ -108,6 +121,32 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
     } catch (error) {
       logger.error('Error in fetchFeatureLimits:', error);
       set({ error: error as PostgrestError, featureLimits: null, isLoading: false });
+      return null;
+    }
+  },
+
+  fetchAvailablePlans: async () => {
+    try {
+      logger.debug('Fetching available subscription plans');
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .order('price');
+
+      if (error) {
+        logger.error('Error fetching subscription plans:', error);
+        set({ error: error as PostgrestError });
+        return null;
+      }
+
+      const plans = data || [];
+      logger.debug('Subscription plans fetched:', { plans });
+      
+      set({ availablePlans: plans, error: null });
+      return plans;
+    } catch (error) {
+      logger.error('Error in fetchAvailablePlans:', error);
+      set({ error: error as PostgrestError, availablePlans: null });
       return null;
     }
   },

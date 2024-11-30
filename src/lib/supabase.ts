@@ -147,29 +147,56 @@ export async function createStore(storeData: {
 // Admin stats retrieval
 export async function getAdminStats(timeRange: string = '24h'): Promise<any> {
   try {
-    const { data, error } = await supabase.rpc('get_admin_stats', {
+    // Get admin stats
+    const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats', {
       time_range: timeRange
     });
 
-    if (error) {
-      logger.error('Error fetching admin stats:', error);
-      throw error;
+    if (statsError) {
+      logger.error('Error fetching admin stats:', statsError);
+      throw statsError;
     }
 
+    // Get user list with subscription info
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        email,
+        subscription_tier,
+        is_admin,
+        created_at
+      `)
+      .order('created_at', { ascending: false });
+
+    if (usersError) {
+      logger.error('Error fetching users:', usersError);
+      throw usersError;
+    }
+
+    // Log the raw data for debugging
+    logger.debug('Admin stats raw data:', { stats: statsData, users: usersData });
+
+    if (!statsData) {
+      logger.error('No data returned from get_admin_stats');
+      throw new Error('No data returned from get_admin_stats');
+    }
+
+    // Use actual values from the database
     return {
-      totalUsers: data.totalUsers || 0,
-      usersByTier: data.usersByTier || {},
-      users: data.users || [],
-      // Default values for other stats until we implement them
-      totalStores: 0,
-      totalProducts: 0,
-      totalPageViews: 0,
-      totalVisitors: 0,
-      totalClicks: 0,
-      averageStoresPerUser: 0,
-      averageProductsPerStore: 0,
-      activityByDate: {},
-      storePerformance: []
+      totalUsers: statsData.total_users || 0,
+      activeUsers: statsData.active_users || 0,
+      totalStores: statsData.total_stores || 0,
+      activeStores: statsData.active_stores || 0,
+      totalProducts: statsData.total_products || 0,
+      activeProducts: statsData.active_products || 0,
+      totalViews: statsData.total_views || 0,
+      totalClicks: statsData.total_clicks || 0,
+      conversionRate: statsData.conversion_rate || 0,
+      usersByTier: statsData.users_by_tier || {},
+      users: usersData || [], 
+      activityByDate: {},  
+      storePerformance: [] 
     };
   } catch (error) {
     logger.error('Error fetching admin stats:', error);
