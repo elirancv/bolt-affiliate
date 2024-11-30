@@ -28,18 +28,26 @@ export default function CreateStore() {
       const { data, error } = await supabase
         .from('stores')
         .select('id')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
       
       console.log('Store count query result:', { data, error });
       
       if (!error && data) {
         setStoreCount(data.length);
         console.log('Current store count:', data.length);
+
+        // If stores exist, redirect to the first store's product add page
+        if (data.length > 0) {
+          console.log('Stores exist, redirecting to products/add', { storeId: data[0].id });
+          navigate(`/stores/${data[0].id}/products/add`, { replace: true });
+          return;
+        }
       }
     };
 
     initializeData();
-  }, [user, fetchFeatureLimits]);
+  }, [user, fetchFeatureLimits, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

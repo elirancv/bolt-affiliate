@@ -1,7 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
+import { Package, Plus } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 
 interface Product {
@@ -16,6 +19,10 @@ interface Product {
   updated_at: string;
   views?: number;
   clicks?: number;
+}
+
+interface Store {
+  id: string;
 }
 
 const getProducts = async () => {
@@ -56,7 +63,7 @@ const getProducts = async () => {
       name: product.product_name || product.name,
       description: product.description,
       store_id: product.store_id,
-      image_url: product.image_url,
+      image_url: product.image_urls?.[0], // Get the first image from the array
       status: product.status,
       is_featured: product.is_featured,
       created_at: product.created_at,
@@ -73,6 +80,24 @@ const getProducts = async () => {
     return transformedProducts;
   } catch (error) {
     console.error('Error in getProducts:', error);
+    throw error;
+  }
+};
+
+const getStores = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching stores:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in getStores:', error);
     throw error;
   }
 };
@@ -95,10 +120,10 @@ const SkeletonCard = React.memo(() => (
   </div>
 ));
 
-const ProductCard = React.memo(({ product, onProductClick }: { product: Product; onProductClick: (id: string) => void }) => (
+const ProductCard = React.memo(({ product, onProductClick }: { product: Product; onProductClick: (id: string, storeId: string) => void }) => (
   <div
     className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
-    onClick={() => onProductClick(product.id)}
+    onClick={() => onProductClick(product.id, product.store_id)}
   >
     {product.image_url ? (
       <img
@@ -152,65 +177,108 @@ const TopProducts = () => {
     }
   });
 
-  const handleProductClick = useCallback((id: string) => {
-    navigate(`/products/${id}`);
+  const { data: stores } = useQuery<Store[]>({
+    queryKey: ['stores'],
+    queryFn: getStores,
+  });
+
+  const handleProductClick = useCallback((id: string, storeId: string) => {
+    console.log('TopProducts - handleProductClick:', { id, storeId });
+    const path = `/stores/${storeId}/products/${id}`;
+    console.log('TopProducts - Navigating to:', path);
+    navigate(path);
   }, [navigate]);
+
+  const handleAddProduct = () => {
+    // Use the /products/add route which will trigger our ProductRedirect component
+    navigate('/products/add');
+  };
 
   // Debug log for render
   console.debug('TopProducts render state:', {
     productsCount: products?.length || 0,
+    productsData: products,
     isLoading,
     hasError: !!error
   });
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[...Array(6)].map((_, i) => (
-          <SkeletonCard key={`skeleton-${i}`} />
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Top Products</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center h-[200px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-500 mb-2">Error loading products</div>
-        <div className="text-sm text-gray-500">{(error as Error).message}</div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Top Products</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <div className="text-red-500 mb-2">Error loading products</div>
+            <div className="text-sm text-gray-500">{(error as Error).message}</div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (products?.length === 0) {
     return (
-      <div className="text-center py-12">
-        <ShoppingBag className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No active products</h3>
-        <p className="mt-1 text-sm text-gray-500">Get started by creating a new product.</p>
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => navigate('/products/new')}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            <span>New Product</span>
-          </button>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Top Products</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="p-3 bg-blue-50 rounded-full mb-4">
+              <Package className="h-6 w-6 text-blue-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Products Yet</h3>
+            <p className="text-sm text-gray-500 max-w-sm mb-4">
+              Add your first product to start generating affiliate links and earning commissions.
+            </p>
+            <Button
+              variant="default"
+              onClick={handleAddProduct}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Your First Product
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          onProductClick={handleProductClick}
-        />
-      ))}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Top Products</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onProductClick={handleProductClick}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -24,8 +24,16 @@ import Billing from './pages/subscription/Billing';
 import LandingPage from './pages/LandingPage';
 import { Toaster } from 'sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import ProductRedirect from './components/ProductRedirect'; // Import ProductRedirect component
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1
+    }
+  }
+});
 
 export default function App() {
   const { user, isLoading, initializeAuth } = useAuthStore();
@@ -65,15 +73,9 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/stores" element={<StoreList />} />
-                <Route path="/stores/create" element={<CreateStore />} />
                 
-                {/* Product Routes */}
-                <Route path="/products">
-                  <Route index element={<ProductList />} />
-                  <Route path=":productId" element={<ProductView />} />
-                  <Route path=":productId/edit" element={<EditProduct />} />
-                  <Route path="add" element={<Navigate to="/stores" replace />} />
-                </Route>
+                {/* Create Store Route - Moved before store-specific routes */}
+                <Route path="/stores/new" element={<CreateStore />} />
                 
                 {/* Store-specific Routes */}
                 <Route path="/stores/:storeId">
@@ -86,6 +88,15 @@ export default function App() {
                   <Route path="products/create" element={<AddProduct />} />
                   <Route path="products/:productId" element={<ProductView />} />
                   <Route path="products/:productId/edit" element={<EditProduct />} />
+                </Route>
+
+                {/* Product Routes */}
+                <Route path="/products">
+                  <Route index element={<ProductList />} />
+                  <Route path=":productId" element={<ProductView />} />
+                  <Route path=":productId/edit" element={<EditProduct />} />
+                  <Route path="new" element={<ProductRedirect />} />
+                  <Route path="add" element={<ProductRedirect />} />
                 </Route>
                 
                 {/* Subscription Routes */}
