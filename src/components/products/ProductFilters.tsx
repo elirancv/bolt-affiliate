@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/Select';
@@ -17,17 +17,14 @@ interface ProductFiltersProps {
 
 export function ProductFilters({
   categories,
-  filters,
+  filters: initialFilters,
   onFiltersChange,
   onClose
 }: ProductFiltersProps) {
-  console.log('ProductFilters rendered with:', {
-    categories,
-    currentFilters: filters
-  });
+  const [filters, setFilters] = useState(initialFilters);
 
   const handleClearFilters = () => {
-    onFiltersChange({
+    setFilters({
       status: [],
       category: [],
       minPrice: '',
@@ -36,26 +33,27 @@ export function ProductFilters({
   };
 
   const handleStatusChange = (value: string) => {
-    console.log('Status changed to:', value === 'all' ? [] : [value]);
     const newStatus = value === 'all' ? [] : [value];
-    onFiltersChange({ ...filters, status: newStatus });
+    setFilters({ ...filters, status: newStatus });
   };
 
   const handleCategoryChange = (value: string) => {
-    console.log('Category changed to:', value === 'all' ? [] : [value]);
     const newCategory = value === 'all' ? [] : [value];
-    onFiltersChange({ ...filters, category: newCategory });
+    setFilters({ ...filters, category: newCategory });
   };
 
   const handlePriceChange = (type: 'min' | 'max', value: string) => {
-    console.log(`${type} price changed to:`, value);
-    onFiltersChange({
+    setFilters({
       ...filters,
       [type === 'min' ? 'minPrice' : 'maxPrice']: value,
     });
   };
 
   const hasActiveFilters = filters.category.length > 0 || filters.status.length > 0 || filters.minPrice || filters.maxPrice;
+
+  useEffect(() => {
+    onFiltersChange(filters);
+  }, [filters, onFiltersChange]);
 
   return (
     <div className="space-y-3">
@@ -163,7 +161,7 @@ export function ProductFilters({
                 {categories.find(c => c.id === filters.category[0])?.name}
               </span>
               <button
-                onClick={() => onFiltersChange({ ...filters, category: [] })}
+                onClick={() => setFilters({ ...filters, category: [] })}
                 className="text-blue-400 hover:text-blue-600"
               >
                 <X className="h-3 w-3" />
@@ -176,7 +174,7 @@ export function ProductFilters({
                 {filters.status[0].charAt(0).toUpperCase() + filters.status[0].slice(1)}
               </span>
               <button
-                onClick={() => onFiltersChange({ ...filters, status: [] })}
+                onClick={() => setFilters({ ...filters, status: [] })}
                 className="text-blue-400 hover:text-blue-600"
               >
                 <X className="h-3 w-3" />
@@ -193,7 +191,7 @@ export function ProductFilters({
                   : `Max $${filters.maxPrice}`}
               </span>
               <button
-                onClick={() => onFiltersChange({ ...filters, minPrice: '', maxPrice: '' })}
+                onClick={() => setFilters({ ...filters, minPrice: '', maxPrice: '' })}
                 className="text-blue-400 hover:text-blue-600"
               >
                 <X className="h-3 w-3" />

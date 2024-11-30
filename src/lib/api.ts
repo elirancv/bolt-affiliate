@@ -365,7 +365,6 @@ export async function getProducts(storeId?: string): Promise<Product[]> {
       throw error;
     }
 
-    console.log('Raw products data:', data);
     return data || [];
   } catch (error) {
     console.error('Error getting products:', error);

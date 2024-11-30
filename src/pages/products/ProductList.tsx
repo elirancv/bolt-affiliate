@@ -127,14 +127,11 @@ export default function ProductList() {
         // Check if any field contains the search query
         return searchableFields.some(field => field.includes(query));
       });
-      
-      console.log(`Search "${query}": found ${filtered.length} matches`);
     }
 
     // Apply status filters
     if (filters.status.length > 0) {
       filtered = filtered.filter(product => filters.status.includes(product.status));
-      console.log(`Status filter: ${filtered.length} matches`);
     }
     
     // Apply category filters
@@ -150,7 +147,6 @@ export default function ProductList() {
           (product.category && product.category.id === categoryId)
         );
       });
-      console.log(`Category filter: ${filtered.length} matches`);
     }
 
     // Apply price filters
@@ -167,7 +163,6 @@ export default function ProductList() {
           product.price && !isNaN(parseFloat(product.price)) && parseFloat(product.price) <= maxPrice
         );
       }
-      console.log(`Price filter: ${filtered.length} matches`);
     }
 
     setFilteredProducts(filtered);

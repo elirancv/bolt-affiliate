@@ -21,12 +21,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Add error logging
+let lastSignInTime = 0;
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN') {
-    logger.info('User signed in', { 
-      userId: session?.user?.id,
-      email: session?.user?.email 
-    });
+    // Prevent duplicate logs within 5 seconds
+    const now = Date.now();
+    if (now - lastSignInTime > 5000) {
+      lastSignInTime = now;
+      logger.info('User signed in', { 
+        userId: session?.user?.id,
+        email: session?.user?.email 
+      });
+    }
   } else if (event === 'SIGNED_OUT') {
     logger.info('User signed out');
   } else if (event === 'TOKEN_REFRESHED') {
